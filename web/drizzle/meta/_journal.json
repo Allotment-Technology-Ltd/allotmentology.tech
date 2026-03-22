@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1774205652676,
+      "tag": "0000_init",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774206108851,
+      "tag": "0001_opportunity_detail_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774207200000,
+      "tag": "0002_scoring_engine_dimensions",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774208300000,
+      "tag": "0003_collateral_library_phase5",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774210000000,
+      "tag": "0004_submission_pack_workflow_phase6",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774212000000,
+      "tag": "0005_ai_generation_logs_phase8",
+      "breakpoints": true
+    }
+  ]
+}

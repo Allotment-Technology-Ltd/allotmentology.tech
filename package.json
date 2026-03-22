@@ -1,0 +1,14 @@
+{
+  "name": "allotment-technology-ltd",
+  "private": true,
+  "description": "Funding ops app lives in web/ — scripts forward there.",
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "dev:only": "npm --prefix web run dev:only",
+    "build": "npm --prefix web run build",
+    "start": "npm --prefix web run start",
+    "lint": "npm --prefix web run lint",
+    "db:migrate": "npm --prefix web run db:migrate",
+    "db:seed": "npm --prefix web run db:seed"
+  }
+}

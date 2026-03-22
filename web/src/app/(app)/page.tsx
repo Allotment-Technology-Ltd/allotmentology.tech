@@ -1,0 +1,76 @@
+import Link from "next/link";
+
+import { EmptyState } from "@/components/ui/empty-state";
+
+const shortcuts = [
+  {
+    href: "/opportunities",
+    label: "Opportunities",
+    desc: "Pipeline, scoring, packs, tasks, conflicts",
+  },
+  {
+    href: "/deadlines",
+    label: "Deadlines",
+    desc: "Tasks by urgency and opportunity close dates",
+  },
+  {
+    href: "/submission-packs",
+    label: "Submission packs",
+    desc: "Draft packs linked to opportunities",
+  },
+  {
+    href: "/collateral",
+    label: "Collateral",
+    desc: "Reusable Markdown blocks for applications",
+  },
+] as const;
+
+export default function DashboardPage() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">
+          Dashboard
+        </h1>
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-zinc-400">
+          Internal funding workspace: capture opportunities, score fit, draft
+          submission packs, and track deadlines. Everything stays in Neon until
+          you export or copy out.
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {shortcuts.map((s) => (
+          <Link
+            key={s.href}
+            href={s.href}
+            className="group rounded-lg border border-zinc-800 bg-zinc-950/40 px-4 py-4 transition hover:border-zinc-600 hover:bg-zinc-900/40"
+          >
+            <p className="text-sm font-medium text-zinc-100 group-hover:text-white">
+              {s.label}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-zinc-500">{s.desc}</p>
+          </Link>
+        ))}
+      </div>
+
+      <EmptyState
+        title="First session?"
+        description="Create an opportunity, add a submission pack from its detail page, then open the pack to draft answers and run the readiness checklist before marking Ready."
+      >
+        <Link
+          href="/opportunities/new"
+          className="rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+        >
+          New opportunity
+        </Link>
+        <Link
+          href="/opportunities"
+          className="rounded-md border border-zinc-600 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+        >
+          View pipeline
+        </Link>
+      </EmptyState>
+    </div>
+  );
+}

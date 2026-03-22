@@ -1,0 +1,14 @@
+---
+description: Add and use AI skills and subagents in web/src/lib/ai
+globs: web/src/lib/ai/**/*
+alwaysApply: false
+---
+
+# AI layer — skills & subagents
+
+- **Constitution:** all model calls must respect `src/lib/ai/constitution.ts` (blunt, skeptical, no fabrication, no auto-submit). Use `buildLayeredSystemPrompt()` via `runJsonModule` in `structured.ts`.
+- **New skill:** add `web/src/lib/ai/skills/<kebab-name>.ts` — export a Zod `*OutputSchema`, a typed `async function` that calls `runJsonModule()` with `moduleKind: "skill"` and `moduleName` matching the filename (e.g. `compress-to-limit`). Re-export from `skills/index.ts`.
+- **New subagent:** add `web/src/lib/ai/subagents/<kebab-name>.ts` — same pattern with `moduleKind: "subagent"`. Re-export from `subagents/index.ts`.
+- **Return shape:** wrap outputs with `asGenerated()` from `types.ts` so callers get `provenance`, `logId`, `model`.
+- **UI / server actions:** keep AI on the server (`import "server-only"` on `src/lib/ai/index.ts`). Wire UI through server actions; never expose API keys to the client.
+- **Audit:** successful structured runs persist to `ai_generation_logs` — preserve `opportunityId` / `userId` in context when available.

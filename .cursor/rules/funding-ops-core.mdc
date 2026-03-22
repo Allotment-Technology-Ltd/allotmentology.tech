@@ -1,0 +1,19 @@
+---
+description: Funding ops monorepo layout, env secrets, deployment touchpoints
+alwaysApply: true
+---
+
+# Allotment Technology — funding ops (core)
+
+- **App root:** `web/` (Next.js 16 App Router). Run `npm install`, `npm run dev`, `npm run db:migrate`, `npm run build` from `web/`.
+- **Secrets:** only in `web/.env` (local, gitignored) and Vercel/Neon dashboards — never commit credentials.
+- **Required env:** `DATABASE_URL`, `NEON_AUTH_BASE_URL`. Optional AI: `AI_API_KEY` or `OPENAI_API_KEY`, `AI_BASE_URL`, `AI_MODEL`.
+- **Schema:** Drizzle in `web/src/db/schema/`; migrations in `web/drizzle/*.sql`. After pulls with new migrations, run `npm run db:migrate` per environment.
+- **Auth:** Neon Auth; `ensureAppUser()` syncs session email to `public.users`.
+- **Full checklist:** repo root `DEPLOYMENT.md`.
+
+**Contact routing (submissions / external comms):**
+
+- **Restormel Keys** (councils, allotments, physical keys/access, Restormel narrative): prefer **contact@restormel.dev**.
+- **SOPHIA** (operator product, admin/security, control-plane): prefer **admin@usesophia.app**.
+- If a task spans both, name the **primary** audience in the subject line and CC the other address when appropriate.

@@ -1,0 +1,12 @@
+---
+description: Automate skill/rule authoring using Cursor user skills and project conventions
+alwaysApply: true
+---
+
+# Cursor skills & automation
+
+- **Project AI rules:** follow `.cursor/rules/ai-skills-subagents.mdc` when editing `web/src/lib/ai/**`.
+- **Creating a new Cursor skill (editor capability):** use the user skill at `~/.cursor/skills-cursor/create-skill/SKILL.md` — skills live in `~/.cursor/skills/<name>/SKILL.md` with YAML frontmatter (`name`, `description`).
+- **Creating a new Cursor rule:** use `~/.cursor/skills-cursor/create-rule/SKILL.md` — add `.mdc` files under **this repo’s** `.cursor/rules/` with `description`, and either `alwaysApply: true` or `globs: ...`.
+- **Prefer automation:** run `npm run lint` and `npm run build` from `web/` after substantive changes; use Neon MCP (`user-Neon`) for connection strings, auth setup docs, and SQL against branches when configured.
+- **Restormel MCP:** if enabled in Cursor Settings → MCP, use it for Restormel Keys–specific context; otherwise rely on `DEPLOYMENT.md` and product docs in-repo.
