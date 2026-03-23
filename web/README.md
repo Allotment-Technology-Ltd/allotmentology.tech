@@ -18,6 +18,10 @@ For a full manual checklist (Neon, Auth, Vercel, Git, migrations, where to store
 | `AI_API_KEY` or `OPENAI_API_KEY` | No | Enables the Phase 8 AI layer (`src/lib/ai/*`): subagents, skills, and `ai_generation_logs`. |
 | `AI_BASE_URL` | No | OpenAI-compatible API base including `/v1` (default `https://api.openai.com/v1`). |
 | `AI_MODEL` | No | Chat model id (default `gpt-4o-mini`). |
+| `AI_PROVIDER` | No | `openai-compatible` (default) or `restormel-keys`. |
+| `RESTORMEL_KEYS_API_KEY` | No | Required when `AI_PROVIDER=restormel-keys`. |
+| `RESTORMEL_KEYS_BASE_URL` | No | Optional adapter base URL (default `https://api.restormel.dev/v1`). |
+| `RESTORMEL_KEYS_MODEL` | No | Optional adapter model id (default `restormel-writer-v1`). |
 
 Google sign-in: enable the Google provider in the same Auth configuration screen and add your app origin (for example `http://localhost:3000`) under trusted / redirect settings as described in [Set up OAuth](https://neon.com/docs/auth/guides/setup-oauth).
 
@@ -61,6 +65,7 @@ Open [http://localhost:3000](http://localhost:3000). Unauthenticated visitors ar
 | `/opportunities`, `/opportunities/[id]` | Pipeline and detail |
 | `/collateral`, `/collateral/[id]` | Collateral library |
 | `/submission-packs`, `/submission-packs/[id]` | Submission packs |
+| `/knowledge` | Global material links + writing style profile/samples |
 | `/deadlines` | Task deadlines (alias: `/tasks` redirects here) |
 | `/settings` | Hub linking to Neon Auth account pages |
 | `/submissions`, `/submissions/[id]` | Redirect to `/submission-packs` (legacy) |
@@ -95,12 +100,20 @@ After pulling schema changes, run `npm run db:migrate`.
 ## AI operating layer (Phase 8)
 
 - **Constitution & prompts**: `src/lib/ai/constitution.ts` — blunt, skeptical operator tone; no auto-submit; separate fact from guess.
-- **Provider**: OpenAI-compatible HTTP client (`src/lib/ai/provider/`) with `AI_API_KEY` / `AI_BASE_URL` / `AI_MODEL`.
+- **Provider**: modular provider layer with OpenAI-compatible default plus Restormel adapter (`src/lib/ai/provider/`), selected by `AI_PROVIDER`.
 - **Subagents** (typed JSON outputs): `opportunity-scout`, `eligibility-assessor`, `narrative-framer`, `application-drafter`, `conflict-checker`, `submission-operator` under `src/lib/ai/subagents/`.
 - **Skills**: `classify-opportunity`, `score-opportunity-fit`, `choose-narrative-angle`, `generate-application-pack`, `detect-scope-conflict`, `compress-to-limit`, `extract-evidence` under `src/lib/ai/skills/`.
 - **Audit trail**: each successful structured call writes to `ai_generation_logs` (run `npm run db:migrate` after pulling migration `0005_*`).
 - **Provenance**: use `asVerified` / `asGenerated` from `src/lib/ai/types.ts` when composing UI or exports.
 - **Runtime**: `createFundingOpsAiContext({ userId, opportunityId })` from `src/lib/ai/runtime.ts` (throws if AI is not configured).
+
+## Knowledge base + style profile
+
+- **Global knowledge library**: `/knowledge` stores reusable materials (repo/doc/file/portal URLs), summaries, and tags.
+- **Per-opportunity links**: opportunity detail has a **Knowledge links** section to attach existing assets or create-and-link in one step.
+- **Writing style profile**: `/knowledge` includes voice description, markdown guardrails, banned phrases, and preferred structure.
+- **Writing samples**: add representative text samples used as few-shot style cues for submission drafting.
+- **AI drafting**: pack drafting now incorporates linked knowledge + style profile/samples and returns review metadata (citations needed, banned phrase hits, confidence).
 
 ## v1 definition of done (verify before “done”)
 

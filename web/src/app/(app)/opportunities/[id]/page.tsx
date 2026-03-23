@@ -16,6 +16,8 @@ import { DeleteOpportunityButton } from "../delete-opportunity-button";
 import {
   ConflictQuickForm,
   DeleteEntityButton,
+  KnowledgeLinkForm,
+  KnowledgeQuickCreateForm,
   PackQuickForm,
   type ScoreFormInitial,
   ScoreInlineForm,
@@ -129,6 +131,7 @@ export default async function OpportunityDetailPage({
             ["#notes", "Notes"],
             ["#scoring", "Scoring"],
             ["#packs", "Submission packs"],
+            ["#knowledge", "Knowledge"],
             ["#tasks", "Tasks"],
             ["#conflicts", "Conflicts"],
           ] as const
@@ -165,6 +168,48 @@ export default async function OpportunityDetailPage({
             </dd>
           </div>
         </dl>
+      </section>
+
+      <section id="knowledge" className={sectionClass}>
+        <h2 className={sectionTitle}>Knowledge links</h2>
+        {data.knowledge.length === 0 ? (
+          <p className="text-sm text-zinc-500">No linked materials yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {data.knowledge.map((k) => (
+              <li
+                key={k.knowledgeAssetId}
+                className="flex items-start justify-between gap-3 rounded-md border border-zinc-800 p-3 text-sm"
+              >
+                <div>
+                  <a
+                    href={k.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-sky-400 hover:text-sky-300 hover:underline"
+                  >
+                    {k.title}
+                  </a>
+                  <p className="text-xs text-zinc-500">
+                    {k.sourceType} · priority {k.priority}
+                  </p>
+                  {k.relevanceNote ? (
+                    <p className="mt-1 whitespace-pre-wrap text-zinc-400">
+                      {k.relevanceNote}
+                    </p>
+                  ) : null}
+                </div>
+                <DeleteEntityButton
+                  kind="knowledge"
+                  id={k.knowledgeAssetId}
+                  opportunityId={id}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+        <KnowledgeLinkForm opportunityId={id} options={data.availableKnowledge} />
+        <KnowledgeQuickCreateForm opportunityId={id} />
       </section>
 
       <section id="eligibility" className={sectionClass}>

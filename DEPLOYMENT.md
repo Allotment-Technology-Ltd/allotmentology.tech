@@ -51,7 +51,7 @@ npm install
 npm run db:migrate
 ```
 
-**Migrations on disk:** `web/drizzle/0000_init.sql` through `0005_ai_generation_logs_phase8.sql` (applied in order via Drizzle).
+**Migrations on disk:** `web/drizzle/0000_init.sql` through `0006_silky_smasher.sql` (applied in order via Drizzle).
 
 **When to re-run:** After every `git pull` that adds a new file under `web/drizzle/*.sql`, run `npm run db:migrate` against each environment (local, Neon preview branch, production) that should match the new schema.
 
@@ -90,10 +90,19 @@ npm run db:seed
 
 | Location | Variables |
 |----------|-----------|
-| `web/.env` | `AI_API_KEY` or `OPENAI_API_KEY`, optional `AI_BASE_URL`, `AI_MODEL` |
+| `web/.env` | `AI_PROVIDER` (`openai-compatible` or `restormel-keys`), plus either OpenAI-style vars (`AI_API_KEY` / `AI_BASE_URL` / `AI_MODEL`) or Restormel vars (`RESTORMEL_KEYS_API_KEY` / `RESTORMEL_KEYS_BASE_URL` / `RESTORMEL_KEYS_MODEL`) |
 | Vercel | Same names if you use AI in production |
 
 If unset, the app runs; AI server actions return a clear “not configured” message.
+
+### Knowledge base and writing style setup
+
+After migrations, open `/knowledge` and:
+
+1. Add global knowledge assets (repo URLs, docs, portals, files).
+2. Save a writing style profile (voice, guardrails, banned phrases, structure).
+3. Add writing samples that match your submission voice.
+4. Link relevant assets from each opportunity detail page under **Knowledge links**.
 
 ---
 
@@ -168,6 +177,7 @@ Project **Cursor rules** under `.cursor/rules/` describe when to use **contact@r
 | Neon Auth URL | `web/.env` → `NEON_AUTH_BASE_URL`; Vercel → `NEON_AUTH_BASE_URL` |
 | OAuth client IDs/secrets | Neon Auth configuration (not in this repo) |
 | OpenAI (or compatible) key | `web/.env` / Vercel → `AI_API_KEY` or `OPENAI_API_KEY` |
+| Restormel adapter key | `web/.env` / Vercel → `RESTORMEL_KEYS_API_KEY` (when `AI_PROVIDER=restormel-keys`) |
 
 **Never commit:** `web/.env`, production URLs with embedded passwords, API keys.
 

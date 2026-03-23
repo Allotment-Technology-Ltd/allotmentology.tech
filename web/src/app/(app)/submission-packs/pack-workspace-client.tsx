@@ -12,7 +12,12 @@ import {
 import { formatDate } from "@/lib/format";
 import { PACK_FIELD_LABEL } from "@/lib/submission-packs/constants";
 
-import { saveSubmissionPack, type PackFormState } from "./actions";
+import {
+  runWritingAgentForPack,
+  saveSubmissionPack,
+  type PackAiFormState,
+  type PackFormState,
+} from "./actions";
 import { ChecklistEditor } from "./checklist-editor";
 import { CopyPackMarkdownButton } from "./copy-pack-markdown-button";
 
@@ -34,7 +39,12 @@ export function PackWorkspaceClient(props: {
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(saveSubmissionPack, initial);
+  const [aiState, aiAction, aiPending] = useActionState<PackAiFormState, FormData>(
+    runWritingAgentForPack,
+    { error: null },
+  );
   const pendingRef = useRef(false);
+  const aiPendingRef = useRef(false);
 
   useEffect(() => {
     if (pendingRef.current && !pending && state.error === null) {
@@ -42,6 +52,13 @@ export function PackWorkspaceClient(props: {
     }
     pendingRef.current = pending;
   }, [pending, state.error, router]);
+
+  useEffect(() => {
+    if (aiPendingRef.current && !aiPending && aiState.error === null && aiState.logId) {
+      router.refresh();
+    }
+    aiPendingRef.current = aiPending;
+  }, [aiPending, aiState.error, aiState.logId, router]);
 
   const p = props.pack;
   const statusLabel = PACK_STATUS_LABEL[p.status];
@@ -103,6 +120,48 @@ export function PackWorkspaceClient(props: {
           you are satisfied.
         </div>
       )}
+
+      <section className="space-y-3 rounded-lg border border-sky-900/40 bg-sky-950/20 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-medium text-zinc-100">Writing agent</h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              Generate a high-level draft from linked knowledge and your style profile, then edit before submission.
+            </p>
+          </div>
+          <form action={aiAction}>
+            <input type="hidden" name="packId" value={p.id} />
+            <button
+              type="submit"
+              disabled={aiPending}
+              className="rounded-md bg-sky-300 px-3 py-1.5 text-sm font-medium text-sky-950 hover:bg-sky-200 disabled:opacity-60"
+            >
+              {aiPending ? "Generating…" : "Run writing agent"}
+            </button>
+          </form>
+        </div>
+        {aiState.error ? (
+          <p className="text-sm text-red-300">{aiState.error}</p>
+        ) : aiState.logId ? (
+          <div className="space-y-1 text-xs text-zinc-400">
+            <p>
+              Draft refreshed with model <span className="text-zinc-300">{aiState.model}</span> (log{" "}
+              <span className="text-zinc-300">{aiState.logId}</span>)
+            </p>
+            {typeof aiState.confidence === "number" ? (
+              <p>Confidence: {Math.round(aiState.confidence * 100)}%</p>
+            ) : null}
+            {aiState.citationsNeeded && aiState.citationsNeeded.length > 0 ? (
+              <p>Citations needed: {aiState.citationsNeeded.length}</p>
+            ) : null}
+            {aiState.bannedPhraseHits && aiState.bannedPhraseHits.length > 0 ? (
+              <p className="text-amber-300">
+                Banned phrase hits detected: {aiState.bannedPhraseHits.join(", ")}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
 
       <form id="submission-pack-form" action={formAction} className="space-y-8">
         <input type="hidden" name="id" value={p.id} />

@@ -11,6 +11,7 @@ export type GeneratedContent<T> = {
   readonly provenance: "generated";
   readonly model: string;
   readonly logId: string;
+  readonly meta?: DraftProvenanceMeta;
   readonly value: T;
 };
 
@@ -20,12 +21,13 @@ export function asVerified<T>(value: T, sourceLabel: string): VerifiedContent<T>
 
 export function asGenerated<T>(
   value: T,
-  meta: { model: string; logId: string },
+  meta: { model: string; logId: string; outputMeta?: DraftProvenanceMeta },
 ): GeneratedContent<T> {
   return {
     provenance: "generated",
     model: meta.model,
     logId: meta.logId,
+    meta: meta.outputMeta,
     value,
   };
 }
@@ -36,3 +38,11 @@ export type ChatMessage = {
 };
 
 export type AiModuleKind = "subagent" | "skill";
+
+export type DraftProvenanceMeta = {
+  confidence?: number;
+  citationsNeeded?: string[];
+  evidenceBackedClaims?: string[];
+  reviewChecklist?: string[];
+  bannedPhraseHits?: string[];
+};

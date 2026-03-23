@@ -10,8 +10,17 @@ import { getAuthServer } from "@/lib/auth/server";
 import { getServerDb } from "@/lib/db/server";
 import { evaluateSubmissionPackReadiness } from "@/lib/submission-packs/readiness";
 import { submissionPackFormSchema } from "@/lib/submission-packs/zod";
+import { generatePackDraftAi } from "./pack-ai-actions";
 
 export type PackFormState = { error: string | null; issues?: string[] };
+export type PackAiFormState = {
+  error: string | null;
+  model?: string;
+  logId?: string;
+  confidence?: number;
+  citationsNeeded?: string[];
+  bannedPhraseHits?: string[];
+};
 
 async function requireSessionUser() {
   const { data } = await getAuthServer().getSession();
@@ -144,4 +153,87 @@ export async function loadSubmissionPackDetail(packId: string) {
     .where(eq(submissionPacks.id, packId))
     .limit(1);
   return row ?? null;
+}
+
+export async function runWritingAgentForPack(
+  _prev: PackAiFormState,
+  formData: FormData,
+): Promise<PackAiFormState> {
+  await requireSessionUser();
+  const packIdRaw = formData.get("packId");
+  if (typeof packIdRaw !== "string" || !z.string().uuid().safeParse(packIdRaw).success) {
+    return { error: "Invalid pack id." };
+  }
+
+  const ai = await generatePackDraftAi(packIdRaw);
+  if (!ai.ok) {
+    return { error: ai.error };
+  }
+
+  const db = getServerDb();
+  const [existing] = await db
+    .select({
+      id: submissionPacks.id,
+      draftAnswersMd: submissionPacks.draftAnswersMd,
+      missingInputsMd: submissionPacks.missingInputsMd,
+      risksMd: submissionPacks.risksMd,
+    })
+    .from(submissionPacks)
+    .where(eq(submissionPacks.id, packIdRaw))
+    .limit(1);
+
+  if (!existing) {
+    return { error: "Submission pack not found." };
+  }
+
+  const draftAnswersMd = [
+    ai.fragments.working_thesis ? `## Working thesis\n${ai.fragments.working_thesis}` : null,
+    ai.fragments.project_framing ? `## Project framing\n${ai.fragments.project_framing}` : null,
+    ai.fragments.summary_100 ? `## Summary (100)\n${ai.fragments.summary_100}` : null,
+    ai.fragments.summary_250 ? `## Summary (250)\n${ai.fragments.summary_250}` : null,
+    ai.fragments.draft_answers_md
+      ? `## Draft answers\n${ai.fragments.draft_answers_md}`
+      : Object.entries(ai.fragments)
+          .filter(
+            ([k]) =>
+              !["working_thesis", "project_framing", "summary_100", "summary_250"].includes(k),
+          )
+          .map(([k, v]) => `## ${k.replaceAll("_", " ")}\n${v}`)
+          .join("\n\n"),
+  ]
+    .filter((v) => typeof v === "string" && v.trim().length > 0)
+    .join("\n\n");
+
+  const missingInputsMd =
+    ai.missingInputs.length === 0
+      ? existing.missingInputsMd
+      : ai.missingInputs.map((i) => `- ${i}`).join("\n");
+
+  const risksMd =
+    ai.risks.length === 0 ? existing.risksMd : ai.risks.map((i) => `- ${i}`).join("\n");
+
+  await db
+    .update(submissionPacks)
+    .set({
+      workingThesis: ai.fragments.working_thesis ?? "",
+      projectFraming: ai.fragments.project_framing ?? "",
+      summary100: ai.fragments.summary_100 ?? "",
+      summary250: ai.fragments.summary_250 ?? "",
+      draftAnswersMd: draftAnswersMd || existing.draftAnswersMd,
+      missingInputsMd,
+      risksMd,
+      updatedAt: new Date(),
+    })
+    .where(eq(submissionPacks.id, packIdRaw));
+
+  revalidatePath("/submission-packs");
+  revalidatePath(`/submission-packs/${packIdRaw}`);
+  return {
+    error: null,
+    model: ai.model,
+    logId: ai.logId,
+    confidence: ai.confidence,
+    citationsNeeded: ai.citationsNeeded,
+    bannedPhraseHits: ai.bannedPhraseHits,
+  };
 }

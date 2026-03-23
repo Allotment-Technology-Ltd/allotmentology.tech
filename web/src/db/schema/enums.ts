@@ -48,3 +48,11 @@ export const watchlistSourceTypeEnum = pgEnum("watchlist_source_type", [
   "manual",
   "other",
 ]);
+
+export const knowledgeAssetTypeEnum = pgEnum("knowledge_asset_type", [
+  "repository",
+  "document",
+  "file",
+  "portal",
+  "other",
+]);

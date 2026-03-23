@@ -19,11 +19,14 @@ import {
 
 import {
   addConflictForOpportunity,
+  createAndLinkKnowledgeAsset,
   addPackForOpportunity,
   addTaskForOpportunity,
   deleteConflictForOpportunity,
+  linkKnowledgeToOpportunity,
   deletePackForOpportunity,
   deleteTaskForOpportunity,
+  unlinkKnowledgeForOpportunity,
   saveOpportunityScore,
   type FormState,
 } from "./actions";
@@ -305,7 +308,7 @@ export function ConflictQuickForm({ opportunityId }: { opportunityId: string }) 
 }
 
 export function DeleteEntityButton(props: {
-  kind: "task" | "pack" | "conflict";
+  kind: "task" | "pack" | "conflict" | "knowledge";
   id: string;
   opportunityId: string;
 }) {
@@ -314,12 +317,17 @@ export function DeleteEntityButton(props: {
       ? deleteTaskForOpportunity
       : props.kind === "pack"
         ? deletePackForOpportunity
-        : deleteConflictForOpportunity;
+        : props.kind === "conflict"
+          ? deleteConflictForOpportunity
+          : unlinkKnowledgeForOpportunity;
 
   return (
     <form action={action} className="inline">
       <input type="hidden" name="id" value={props.id} />
       <input type="hidden" name="opportunityId" value={props.opportunityId} />
+      {props.kind === "knowledge" ? (
+        <input type="hidden" name="knowledgeAssetId" value={props.id} />
+      ) : null}
       <button
         type="submit"
         className="text-xs text-red-400/90 hover:text-red-300"
@@ -329,7 +337,140 @@ export function DeleteEntityButton(props: {
           }
         }}
       >
-        Remove
+        {props.kind === "knowledge" ? "Unlink" : "Remove"}
+      </button>
+    </form>
+  );
+}
+
+export function KnowledgeLinkForm(props: {
+  opportunityId: string;
+  options: Array<{
+    id: string;
+    title: string;
+    sourceType: string;
+    url: string;
+  }>;
+}) {
+  const router = useRouter();
+  const [state, formAction, pending] = useActionState(
+    linkKnowledgeToOpportunity,
+    initial,
+  );
+  const pendingRef = useRef(false);
+  useEffect(() => {
+    if (pendingRef.current && !pending && state.error === null) {
+      router.refresh();
+    }
+    pendingRef.current = pending;
+  }, [pending, state.error, router]);
+
+  return (
+    <form
+      action={formAction}
+      className="mt-4 space-y-2 rounded-md border border-zinc-800 bg-zinc-950/40 p-3"
+    >
+      <input type="hidden" name="opportunityId" value={props.opportunityId} />
+      {state.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
+      <div>
+        <label className={label} htmlFor="knowledgeAssetId">
+          Link existing asset
+        </label>
+        <select
+          id="knowledgeAssetId"
+          name="knowledgeAssetId"
+          className={input}
+          defaultValue={props.options[0]?.id ?? ""}
+        >
+          {props.options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.title} ({o.sourceType})
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <input
+          name="relevanceNote"
+          placeholder="Relevance note (optional)"
+          className={input}
+        />
+        <input
+          name="priority"
+          type="number"
+          min={1}
+          max={5}
+          defaultValue={3}
+          className={input}
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={pending || props.options.length === 0}
+        className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
+      >
+        Link asset
+      </button>
+    </form>
+  );
+}
+
+export function KnowledgeQuickCreateForm({ opportunityId }: { opportunityId: string }) {
+  const router = useRouter();
+  const [state, formAction, pending] = useActionState(
+    createAndLinkKnowledgeAsset,
+    initial,
+  );
+  const pendingRef = useRef(false);
+  useEffect(() => {
+    if (pendingRef.current && !pending && state.error === null) {
+      router.refresh();
+    }
+    pendingRef.current = pending;
+  }, [pending, state.error, router]);
+
+  return (
+    <form
+      action={formAction}
+      className="mt-4 space-y-2 rounded-md border border-zinc-800 bg-zinc-950/40 p-3"
+    >
+      <input type="hidden" name="opportunityId" value={opportunityId} />
+      {state.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
+      <input name="title" required placeholder="Asset title" className={input} />
+      <input name="url" type="url" required placeholder="https://…" className={input} />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <select name="sourceType" className={input} defaultValue="repository">
+          <option value="repository">repository</option>
+          <option value="document">document</option>
+          <option value="file">file</option>
+          <option value="portal">portal</option>
+          <option value="other">other</option>
+        </select>
+        <input name="tags" placeholder="tag1, tag2" className={input} />
+      </div>
+      <textarea
+        name="summary"
+        rows={2}
+        placeholder="Summary (optional)"
+        className={input}
+      />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <input name="relevanceNote" placeholder="Relevance note (optional)" className={input} />
+        <input
+          name="priority"
+          type="number"
+          min={1}
+          max={5}
+          defaultValue={3}
+          className={input}
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
+      >
+        Create and link asset
       </button>
     </form>
   );

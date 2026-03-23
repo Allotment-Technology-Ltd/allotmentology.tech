@@ -23,8 +23,16 @@ Output discipline:
 - Follow the requested format exactly (especially JSON contracts).
 - If you cannot comply safely, return valid JSON with conservative values (low confidence, empty lists, explicit caveats) and explain only inside allowed fields.`;
 
+export const NON_GENERIC_WRITING_GUARDRAILS = `Anti-generic drafting rules:
+- Avoid generic marketing language and AI filler (e.g. "revolutionary", "game-changing", "world-class", "in today's landscape").
+- Prefer concrete evidence, named delivery steps, and measurable outcomes over abstract claims.
+- Keep sentence cadence varied and natural; avoid repetitive list-like rhythm unless the prompt asks for lists.
+- If evidence is missing, call it out in missingInputs/citationsNeeded instead of padding with vague prose.`;
+
 export function buildLayeredSystemPrompt(moduleDirective: string): string {
   return `${FUNDING_OPS_CONSTITUTION}
+
+${NON_GENERIC_WRITING_GUARDRAILS}
 
 Module-specific directive:
 ${moduleDirective.trim()}

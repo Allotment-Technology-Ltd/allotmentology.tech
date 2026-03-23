@@ -18,6 +18,7 @@ import {
   taskStatusEnum,
   conflictSeverityEnum,
   watchlistSourceTypeEnum,
+  knowledgeAssetTypeEnum,
 } from "./enums";
 
 export const users = pgTable("users", {
@@ -193,6 +194,81 @@ export const sourceWatchlist = pgTable("source_watchlist", {
   label: varchar("label", { length: 512 }),
   sourceType: watchlistSourceTypeEnum("source_type").notNull().default("manual"),
   lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const knowledgeAssets = pgTable("knowledge_assets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  title: varchar("title", { length: 512 }).notNull(),
+  sourceType: knowledgeAssetTypeEnum("source_type").notNull().default("document"),
+  url: text("url").notNull(),
+  summary: text("summary"),
+  tags: text("tags").array(),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const opportunityKnowledgeAssets = pgTable(
+  "opportunity_knowledge_assets",
+  {
+    opportunityId: uuid("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    knowledgeAssetId: uuid("knowledge_asset_id")
+      .notNull()
+      .references(() => knowledgeAssets.id, { onDelete: "cascade" }),
+    relevanceNote: text("relevance_note"),
+    priority: smallint("priority").notNull().default(3),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({
+      columns: [t.opportunityId, t.knowledgeAssetId],
+    }),
+  ],
+);
+
+export const writingStyleProfiles = pgTable("writing_style_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ownerUserId: uuid("owner_user_id")
+    .notNull()
+    .references(() => users.id, {
+      onDelete: "cascade",
+    })
+    .unique(),
+  profileName: varchar("profile_name", { length: 255 }).notNull().default("Default"),
+  voiceDescription: text("voice_description").notNull().default(""),
+  styleGuardrailsMd: text("style_guardrails_md").notNull().default(""),
+  bannedPhrases: text("banned_phrases").array(),
+  preferredStructure: text("preferred_structure"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const writingStyleSamples = pgTable("writing_style_samples", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profileId: uuid("profile_id")
+    .notNull()
+    .references(() => writingStyleProfiles.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 512 }).notNull(),
+  sourceUrl: text("source_url"),
+  sampleText: text("sample_text").notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

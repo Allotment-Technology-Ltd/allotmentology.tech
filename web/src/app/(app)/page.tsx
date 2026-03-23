@@ -19,6 +19,11 @@ const shortcuts = [
     desc: "Draft packs linked to opportunities",
   },
   {
+    href: "/knowledge",
+    label: "Knowledge",
+    desc: "Global material links + writing style samples",
+  },
+  {
     href: "/collateral",
     label: "Collateral",
     desc: "Reusable Markdown blocks for applications",

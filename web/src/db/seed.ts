@@ -9,10 +9,14 @@ import {
   opportunities,
   opportunityScores,
   collateralItems,
+  knowledgeAssets,
+  opportunityKnowledgeAssets,
   submissionPacks,
   tasks,
   applicationConflicts,
   sourceWatchlist,
+  writingStyleProfiles,
+  writingStyleSamples,
 } from "./schema";
 
 const url = process.env.DATABASE_URL;
@@ -218,6 +222,93 @@ async function main() {
       label: "Sector newsletter (demo)",
       sourceType: "newsletter",
       lastCheckedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+    },
+  ]);
+
+  const knowledgeRows = await db
+    .insert(knowledgeAssets)
+    .values([
+      {
+        title: "Restormel Keys repository",
+        sourceType: "repository",
+        url: "https://github.com/Allotment-Technology-Ltd/allotmentology.tech",
+        summary: "Primary product codebase for funding operations and submissions.",
+        tags: ["restormel", "repo", "core"],
+        createdByUserId: u1.id,
+      },
+      {
+        title: "Delivery plan",
+        sourceType: "document",
+        url: "file://allotment-technology-funding-ops-sequenced-delivery-plan.md",
+        summary: "Sequenced scope, phases, and operating constraints.",
+        tags: ["plan", "scope"],
+        createdByUserId: u1.id,
+      },
+      {
+        title: "Initial collateral pack",
+        sourceType: "document",
+        url: "file://funding-collateral-initial-pack-refined.md",
+        summary: "Baseline reusable content for grant applications.",
+        tags: ["collateral", "seed"],
+        createdByUserId: u2.id,
+      },
+    ])
+    .returning({ id: knowledgeAssets.id });
+
+  await db.insert(opportunityKnowledgeAssets).values([
+    {
+      opportunityId: opp1.id,
+      knowledgeAssetId: knowledgeRows[0].id,
+      relevanceNote: "Reference delivery evidence and operational readiness.",
+      priority: 5,
+    },
+    {
+      opportunityId: opp1.id,
+      knowledgeAssetId: knowledgeRows[2].id,
+      relevanceNote: "Use for reusable narrative snippets and factual background.",
+      priority: 4,
+    },
+    {
+      opportunityId: opp2.id,
+      knowledgeAssetId: knowledgeRows[1].id,
+      relevanceNote: "Align narrative with the staged delivery roadmap.",
+      priority: 3,
+    },
+  ]);
+
+  const [styleProfile] = await db
+    .insert(writingStyleProfiles)
+    .values({
+      ownerUserId: u1.id,
+      profileName: "Founder default style",
+      voiceDescription:
+        "Plainspoken UK operator tone: specific, evidence-led, no hype or inflated claims.",
+      styleGuardrailsMd:
+        "- Keep claims tied to evidence.\n- Prefer short declarative sentences.\n- Avoid generic AI phrases and marketing filler.",
+      bannedPhrases: [
+        "world-class solution",
+        "game-changing platform",
+        "revolutionary",
+      ],
+      preferredStructure:
+        "Problem -> evidence -> delivery approach -> measurable outcomes -> risks.",
+    })
+    .returning({ id: writingStyleProfiles.id });
+
+  await db.insert(writingStyleSamples).values([
+    {
+      profileId: styleProfile.id,
+      title: "Sample founder paragraph",
+      sampleText:
+        "We are solving an operational reliability problem, not a branding problem. Councils need a clear audit trail for key allocation and returns. Our approach is to keep workflows short, visible, and measurable so officers can defend decisions with evidence.",
+      notes: "Crisp, practical tone.",
+    },
+    {
+      profileId: styleProfile.id,
+      title: "Sample risk framing",
+      sampleText:
+        "The main risk is delivery variance between pilot sites. We mitigate this by scoping integrations early and agreeing minimum readiness criteria before implementation starts.",
+      notes: "Explicit risk and mitigation style.",
     },
   ]);
 

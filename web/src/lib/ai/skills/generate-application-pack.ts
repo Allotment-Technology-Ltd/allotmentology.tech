@@ -8,6 +8,11 @@ export const generateApplicationPackOutputSchema = z.object({
   packFragments: z.record(z.string(), z.string()),
   missingInputs: z.array(z.string()),
   risks: z.array(z.string()),
+  evidenceBackedClaims: z.array(z.string()).default([]),
+  citationsNeeded: z.array(z.string()).default([]),
+  bannedPhraseHits: z.array(z.string()).default([]),
+  reviewChecklist: z.array(z.string()).default([]),
+  confidence: z.number().min(0).max(1).default(0.5),
 });
 
 export type GenerateApplicationPackOutput = z.infer<
@@ -20,13 +25,31 @@ export async function generateApplicationPack(
     opportunityTitle: string;
     eligibilityNotes?: string;
     collateralSnippets?: Record<string, string>;
+    knowledgeLinks?: Array<{
+      title: string;
+      sourceType: string;
+      url: string;
+      summary?: string | null;
+      relevanceNote?: string | null;
+      priority?: number | null;
+    }>;
+    styleProfile?: {
+      voiceDescription?: string | null;
+      styleGuardrailsMd?: string | null;
+      bannedPhrases?: string[] | null;
+      preferredStructure?: string | null;
+      samples?: Array<{ title: string; sampleText: string }>;
+    };
   },
 ) {
   const { value, logId } = await runJsonModule(ctx, {
     moduleKind: "skill",
     moduleName: "generate-application-pack",
     moduleDirective: `Produce packFragments keyed by logical section (working_thesis, summary_100, etc.) as plain strings.
-Use only provided snippets as facts; mark gaps in missingInputs. Draft-only — no submission.`,
+Use only provided snippets and linked knowledge as factual basis; do not invent details.
+Apply styleProfile voice and guardrails when present. Avoid banned phrases explicitly listed.
+Return reviewChecklist with concrete human-review steps before submission.
+Draft-only; no auto-submit language.`,
     userPayload: JSON.stringify(input, null, 2),
     schema: generateApplicationPackOutputSchema,
     inputSnapshot: { ...input },

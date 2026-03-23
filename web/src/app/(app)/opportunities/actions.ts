@@ -7,11 +7,15 @@ import { z } from "zod";
 
 import {
   applicationConflicts,
+  knowledgeAssets,
   opportunities,
+  opportunityKnowledgeAssets,
   opportunityScores,
   submissionPacks,
   tasks,
   users,
+  writingStyleProfiles,
+  writingStyleSamples,
 } from "@/db/schema/tables";
 import { getServerDb } from "@/lib/db/server";
 import { getAuthServer } from "@/lib/auth/server";
@@ -50,6 +54,24 @@ async function getAppUserIdByEmail(email: string) {
     .limit(1);
   return row?.id ?? null;
 }
+
+const knowledgeQuickSchema = z.object({
+  opportunityId: z.string().uuid(),
+  title: z.string().trim().min(2).max(512),
+  url: z.string().trim().url(),
+  sourceType: z.enum(["repository", "document", "file", "portal", "other"]),
+  summary: z.string().trim().max(4000).optional().default(""),
+  tags: z.string().trim().optional().default(""),
+  relevanceNote: z.string().trim().max(2000).optional().default(""),
+  priority: z.coerce.number().int().min(1).max(5).default(3),
+});
+
+const opportunityKnowledgeLinkSchema = z.object({
+  opportunityId: z.string().uuid(),
+  knowledgeAssetId: z.string().uuid(),
+  relevanceNote: z.string().trim().max(2000).optional().default(""),
+  priority: z.coerce.number().int().min(1).max(5).default(3),
+});
 
 function formDataToOpportunityPayload(fd: FormData) {
   return {
@@ -275,6 +297,103 @@ export async function addConflictForOpportunity(
   return { error: null };
 }
 
+export async function linkKnowledgeToOpportunity(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  await requireSessionUser();
+  const parsed = opportunityKnowledgeLinkSchema.safeParse(
+    Object.fromEntries(formData.entries()),
+  );
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Invalid knowledge link input.",
+    };
+  }
+
+  const db = getServerDb();
+  await db
+    .insert(opportunityKnowledgeAssets)
+    .values({
+      opportunityId: parsed.data.opportunityId,
+      knowledgeAssetId: parsed.data.knowledgeAssetId,
+      relevanceNote: parsed.data.relevanceNote || null,
+      priority: parsed.data.priority,
+    })
+    .onConflictDoUpdate({
+      target: [
+        opportunityKnowledgeAssets.opportunityId,
+        opportunityKnowledgeAssets.knowledgeAssetId,
+      ],
+      set: {
+        relevanceNote: parsed.data.relevanceNote || null,
+        priority: parsed.data.priority,
+      },
+    });
+
+  revalidatePath(`/opportunities/${parsed.data.opportunityId}`);
+  revalidatePath("/knowledge");
+  return { error: null };
+}
+
+export async function createAndLinkKnowledgeAsset(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await requireSessionUser();
+  const parsed = knowledgeQuickSchema.safeParse(
+    Object.fromEntries(formData.entries()),
+  );
+  if (!parsed.success) {
+    return {
+      error:
+        parsed.error.issues[0]?.message ?? "Invalid knowledge asset quick-add.",
+    };
+  }
+
+  const appUserId = await getAppUserIdByEmail(user.email ?? "");
+  if (!appUserId) {
+    return { error: "Local user profile missing; reload and try again." };
+  }
+
+  const db = getServerDb();
+  const tags =
+    parsed.data.tags.trim().length === 0
+      ? null
+      : parsed.data.tags
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean);
+
+  const [asset] = await db
+    .insert(knowledgeAssets)
+    .values({
+      title: parsed.data.title,
+      sourceType: parsed.data.sourceType,
+      url: parsed.data.url,
+      summary: parsed.data.summary || null,
+      tags,
+      createdByUserId: appUserId,
+      updatedAt: new Date(),
+    })
+    .returning({ id: knowledgeAssets.id });
+
+  if (!asset) {
+    return { error: "Could not create knowledge asset." };
+  }
+
+  await db.insert(opportunityKnowledgeAssets).values({
+    opportunityId: parsed.data.opportunityId,
+    knowledgeAssetId: asset.id,
+    relevanceNote: parsed.data.relevanceNote || null,
+    priority: parsed.data.priority,
+  });
+
+  revalidatePath(`/opportunities/${parsed.data.opportunityId}`);
+  revalidatePath("/knowledge");
+  return { error: null };
+}
+
 export async function deleteTaskForOpportunity(formData: FormData) {
   await requireSessionUser();
   const id = formData.get("id");
@@ -311,6 +430,30 @@ export async function deleteConflictForOpportunity(formData: FormData) {
     .delete(applicationConflicts)
     .where(eq(applicationConflicts.id, id));
   revalidatePath(`/opportunities/${oppId}`);
+}
+
+export async function unlinkKnowledgeForOpportunity(formData: FormData) {
+  await requireSessionUser();
+  const parsed = opportunityKnowledgeLinkSchema.safeParse({
+    opportunityId: formData.get("opportunityId"),
+    knowledgeAssetId: formData.get("knowledgeAssetId"),
+    relevanceNote: "",
+    priority: 3,
+  });
+  if (!parsed.success) return;
+
+  const db = getServerDb();
+  await db
+    .delete(opportunityKnowledgeAssets)
+    .where(
+      and(
+        eq(opportunityKnowledgeAssets.opportunityId, parsed.data.opportunityId),
+        eq(opportunityKnowledgeAssets.knowledgeAssetId, parsed.data.knowledgeAssetId),
+      ),
+    );
+
+  revalidatePath(`/opportunities/${parsed.data.opportunityId}`);
+  revalidatePath("/knowledge");
 }
 
 export async function loadUserOptions() {
@@ -522,11 +665,76 @@ export async function loadOpportunityDetail(id: string) {
     .where(eq(applicationConflicts.opportunityId, id))
     .orderBy(desc(applicationConflicts.createdAt));
 
+  const knowledgeRows = await db
+    .select({
+      opportunityId: opportunityKnowledgeAssets.opportunityId,
+      knowledgeAssetId: opportunityKnowledgeAssets.knowledgeAssetId,
+      relevanceNote: opportunityKnowledgeAssets.relevanceNote,
+      priority: opportunityKnowledgeAssets.priority,
+      linkedAt: opportunityKnowledgeAssets.createdAt,
+      title: knowledgeAssets.title,
+      sourceType: knowledgeAssets.sourceType,
+      url: knowledgeAssets.url,
+      summary: knowledgeAssets.summary,
+      tags: knowledgeAssets.tags,
+    })
+    .from(opportunityKnowledgeAssets)
+    .innerJoin(
+      knowledgeAssets,
+      eq(opportunityKnowledgeAssets.knowledgeAssetId, knowledgeAssets.id),
+    )
+    .where(eq(opportunityKnowledgeAssets.opportunityId, id))
+    .orderBy(desc(opportunityKnowledgeAssets.priority), asc(knowledgeAssets.title));
+
+  const availableKnowledge = await db
+    .select({
+      id: knowledgeAssets.id,
+      title: knowledgeAssets.title,
+      sourceType: knowledgeAssets.sourceType,
+      url: knowledgeAssets.url,
+    })
+    .from(knowledgeAssets)
+    .orderBy(asc(knowledgeAssets.title));
+
+  const [styleProfile] =
+    oppRow.opportunity.ownerUserId == null
+      ? []
+      : await db
+          .select({
+            id: writingStyleProfiles.id,
+            profileName: writingStyleProfiles.profileName,
+            voiceDescription: writingStyleProfiles.voiceDescription,
+            styleGuardrailsMd: writingStyleProfiles.styleGuardrailsMd,
+            bannedPhrases: writingStyleProfiles.bannedPhrases,
+            preferredStructure: writingStyleProfiles.preferredStructure,
+          })
+          .from(writingStyleProfiles)
+          .where(eq(writingStyleProfiles.ownerUserId, oppRow.opportunity.ownerUserId))
+          .limit(1);
+
+  const styleSamples = styleProfile
+    ? await db
+        .select({
+          id: writingStyleSamples.id,
+          title: writingStyleSamples.title,
+          sampleText: writingStyleSamples.sampleText,
+          sourceUrl: writingStyleSamples.sourceUrl,
+        })
+        .from(writingStyleSamples)
+        .where(eq(writingStyleSamples.profileId, styleProfile.id))
+        .orderBy(desc(writingStyleSamples.createdAt))
+        .limit(5)
+    : [];
+
   return {
     ...oppRow,
     score: score ?? null,
     packs: packRows,
     taskList: taskRows,
     conflicts: conflictRows,
+    knowledge: knowledgeRows,
+    availableKnowledge,
+    styleProfile: styleProfile ?? null,
+    styleSamples,
   };
 }
