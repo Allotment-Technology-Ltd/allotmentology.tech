@@ -33,6 +33,8 @@ export default async function CollateralListPage({
           <p className="mt-1 max-w-2xl text-sm text-zinc-400">
             Reusable Markdown blocks — bios, programme-specific summaries, and
             standard answers. Approved items are your trusted store for packs.
+            Use New or Edit to run the AI writing aid (Improve, Expand, Shorten) on
+            the Markdown body.
           </p>
         </div>
         <Link

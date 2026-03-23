@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { MarkdownPreview } from "@/app/(app)/collateral/markdown-preview";
+import { MitchellAvatar } from "@/components/mitchell-avatar";
 import { opportunityScores } from "@/db/schema/tables";
 import {
   averageFit,
@@ -19,10 +21,7 @@ import {
   type ScoreFormInitial,
 } from "../../opportunity-detail-forms";
 import { OpportunityFormClient } from "../../opportunity-form-client";
-import {
-  OpportunityEditAiScoringButton,
-  OpportunityEditGrantEnrichButton,
-} from "../../opportunity-edit-ai-client";
+import { OpportunityMitchellIntakeButton } from "../../opportunity-edit-ai-client";
 import { ScoreTriageCard } from "../../score-triage-card";
 
 export const dynamic = "force-dynamic";
@@ -142,12 +141,25 @@ export default async function EditOpportunityPage({
       />
 
       <section className={sectionClass}>
-        <h2 className={sectionTitle}>Grant URL enrichment</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <MitchellAvatar size={44} />
+          <h2 className={sectionTitle}>Mitchell — grant intake</h2>
+        </div>
         <p className="text-sm text-zinc-500">
-          Fetches the page and uses AI to fill summary, eligibility, deadlines,
-          value, and product-weighted fit (requires a saved grant URL above).
+          Mitchell pulls the grant page once, fills what we can, runs full triage
+          scores, and writes a brief: what he sorted, what he needs from you, and
+          pointers that follow our unified application scaffold. Needs a saved grant
+          URL and AI configured under Settings.
         </p>
-        <OpportunityEditGrantEnrichButton opportunityId={id} />
+        <OpportunityMitchellIntakeButton opportunityId={id} />
+        {o.mitchellBriefMd?.trim() ? (
+          <div className="mt-4 rounded-md border border-zinc-800 bg-zinc-950/50 p-4">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Latest brief
+            </p>
+            <MarkdownPreview markdown={o.mitchellBriefMd} />
+          </div>
+        ) : null}
       </section>
 
       <section className={sectionClass} id="knowledge">
@@ -196,7 +208,6 @@ export default async function EditOpportunityPage({
       <section className={sectionClass} id="scoring">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 className={sectionTitle}>Scoring &amp; triage</h2>
-          <OpportunityEditAiScoringButton opportunityId={id} />
         </div>
         <p className="text-sm text-zinc-500">
           AI fills all dimensions (1–5) plus rationale; overall score is still derived

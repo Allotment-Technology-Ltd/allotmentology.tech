@@ -36,7 +36,7 @@ import {
 } from "@/lib/opportunities/zod";
 import { DEFAULT_APPLICATION_FORMS_MD } from "@/lib/submission-packs/application-forms-template";
 
-import { enrichOpportunityFromGrantUrl } from "./opportunity-ai-actions";
+import { runMitchellGrantIntake } from "./opportunity-ai-actions";
 
 export type FormState = { error: string | null };
 
@@ -164,7 +164,7 @@ export async function saveOpportunity(
     typeof formData.get("redirectTo") === "string"
       ? formData.get("redirectTo")
       : null;
-  const enrichAfterSave = formData.get("enrichAfterSave") === "1";
+  const mitchellAfterSave = formData.get("mitchellAfterSave") === "1";
 
   if (existingId) {
     await db
@@ -175,8 +175,8 @@ export async function saveOpportunity(
     revalidatePath(`/opportunities/${existingId}`);
     revalidatePath(`/opportunities/${existingId}/edit`);
 
-    if (enrichAfterSave && parsed.data.grantUrl) {
-      await enrichOpportunityFromGrantUrl(existingId);
+    if (mitchellAfterSave && parsed.data.grantUrl) {
+      await runMitchellGrantIntake(existingId);
     }
 
     if (redirectTo === "edit") {
@@ -195,6 +195,14 @@ export async function saveOpportunity(
   }
 
   revalidatePath("/opportunities");
+
+  if (parsed.data.grantUrl) {
+    const mitchell = await runMitchellGrantIntake(inserted.id);
+    if (!mitchell.ok) {
+      console.warn("[saveOpportunity] Mitchell intake:", mitchell.error);
+    }
+  }
+
   redirect(`/opportunities/${inserted.id}`);
 }
 

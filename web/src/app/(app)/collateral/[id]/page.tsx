@@ -3,7 +3,14 @@ import { notFound } from "next/navigation";
 
 import { formatDate } from "@/lib/format";
 import { COLLATERAL_KIND_LABEL } from "@/lib/collateral/constants";
-import { PACK_STATUS_LABEL } from "@/lib/opportunities/constants";
+import {
+  PACK_STATUS_LABEL,
+  type PackStatus,
+} from "@/lib/opportunities/constants";
+
+function packStatusLabel(status: string): string {
+  return PACK_STATUS_LABEL[status as PackStatus] ?? status;
+}
 
 import {
   linkPackToCollateral,
@@ -64,7 +71,7 @@ export default async function CollateralDetailPage({
         </div>
         <div className="flex flex-wrap gap-3">
           <Link
-            href={`/collateral/${id}/edit`}
+            href={`/collateral/${id}/edit#collateral-writing-aid`}
             className="rounded-md border border-zinc-600 bg-zinc-800 px-4 py-2 text-sm text-zinc-100 hover:bg-zinc-700"
           >
             Edit
@@ -91,6 +98,24 @@ export default async function CollateralDetailPage({
           ))}
         </div>
       ) : null}
+
+      <section className="rounded-lg border border-zinc-800 bg-zinc-950/30 p-5">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
+          AI writing aid
+        </h2>
+        <p className="mt-2 text-sm text-zinc-400">
+          The reader is below. To run Improve, Expand, or Shorten on this Markdown,
+          open the editor — drafts apply to the body field; save when you are happy.
+        </p>
+        <p className="mt-2">
+          <Link
+            href={`/collateral/${id}/edit#collateral-writing-aid`}
+            className="text-sm text-sky-400 hover:text-sky-300 hover:underline"
+          >
+            Open editor with AI controls
+          </Link>
+        </p>
+      </section>
 
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/30 p-5">
         <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">
@@ -127,7 +152,7 @@ export default async function CollateralDetailPage({
                     {p.opportunityTitle}
                   </Link>
                   <p className="text-xs text-zinc-500">
-                    {p.packTitle} · {PACK_STATUS_LABEL[p.packStatus]}
+                    {p.packTitle} · {packStatusLabel(p.packStatus)}
                   </p>
                 </div>
                 <form action={unlinkPackFromCollateral}>

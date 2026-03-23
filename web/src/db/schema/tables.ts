@@ -52,6 +52,8 @@ export const opportunities = pgTable("opportunities", {
   grantUrl: text("grant_url"),
   /** AI-generated product eligibility weighting and rationale (markdown) */
   productFitAssessmentMd: text("product_fit_assessment_md"),
+  /** Mitchell intake: personality brief, asks, and writing hints (markdown) */
+  mitchellBriefMd: text("mitchell_brief_md"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -13,8 +13,9 @@ export default async function NewOpportunityPage() {
           New opportunity
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Capture a funding call or programme; add eligibility and notes on the
-          detail page anytime.
+          Capture a funding call or programme. If you paste a grant URL and save,
+          Mitchell runs intake automatically (fetch, scores, brief) when AI is
+          configured.
         </p>
       </div>
       <OpportunityFormClient

@@ -146,8 +146,9 @@ export function OpportunityFormClient(props: {
           placeholder="https://…"
         />
         <p className="mt-1 text-xs text-zinc-500">
-          Official programme or call page. Save the form, then use “Pull details from
-          URL” below to extract amounts, eligibility, and deadlines.
+          Official programme or call page. Mitchell can fetch this page, fill what we
+          can, run triage scores, and leave you a straight-talking brief (when AI is
+          configured).
         </p>
       </div>
 
@@ -156,11 +157,11 @@ export function OpportunityFormClient(props: {
           <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-400">
             <input
               type="checkbox"
-              name="enrichAfterSave"
+              name="mitchellAfterSave"
               value="1"
               className="rounded border-zinc-600 bg-zinc-900"
             />
-            After saving, fetch details from grant URL (AI)
+            After saving, run Mitchell intake (fetch URL, scores, brief)
           </label>
         </div>
       ) : null}
@@ -191,8 +192,8 @@ export function OpportunityFormClient(props: {
           placeholder="AI can populate weighted product recommendations when you pull from the grant URL."
         />
         <p className="mt-1 text-xs text-zinc-500">
-          Initial assessment vs approved collateral / products — usually filled by “Pull
-          details from URL”; you can edit before saving.
+          Initial assessment vs approved collateral / products — usually filled by
+          Mitchell intake; you can edit before saving.
         </p>
       </div>
 

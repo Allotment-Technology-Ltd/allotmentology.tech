@@ -24,6 +24,8 @@ import {
   ScoreInlineForm,
   TaskQuickForm,
 } from "../opportunity-detail-forms";
+import { MarkdownPreview } from "@/app/(app)/collateral/markdown-preview";
+import { MitchellAvatar } from "@/components/mitchell-avatar";
 import { ScoreTriageCard } from "../score-triage-card";
 
 function num(v: unknown): number | null {
@@ -128,6 +130,7 @@ export default async function OpportunityDetailPage({
         {(
           [
             ["#overview", "Overview"],
+            ["#mitchell", "Mitchell"],
             ["#eligibility", "Eligibility"],
             ["#notes", "Notes"],
             ["#scoring", "Scoring"],
@@ -186,6 +189,31 @@ export default async function OpportunityDetailPage({
             </dd>
           </div>
         </dl>
+      </section>
+
+      <section id="mitchell" className={sectionClass}>
+        <div className="flex flex-wrap items-center gap-3">
+          <MitchellAvatar size={44} />
+          <h2 className={sectionTitle}>Mitchell</h2>
+        </div>
+        <p className="text-sm text-zinc-500">
+          Grant intake lead — fetches the call page, fills what we can, scores the
+          opportunity, and tells you straight what he still needs. Re-run from{" "}
+          <Link href={`/opportunities/${id}/edit`} className="text-sky-400 hover:underline">
+            Edit
+          </Link>{" "}
+          if the URL or context changes.
+        </p>
+        {o.mitchellBriefMd?.trim() ? (
+          <div className="mt-3 rounded-md border border-zinc-800 bg-zinc-950/50 p-4 text-sm text-zinc-200">
+            <MarkdownPreview markdown={o.mitchellBriefMd} />
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            No brief yet — add a grant URL and run Mitchell intake from Edit (or create
+            the opportunity with a URL to run intake automatically).
+          </p>
+        )}
       </section>
 
       <section id="knowledge" className={sectionClass}>

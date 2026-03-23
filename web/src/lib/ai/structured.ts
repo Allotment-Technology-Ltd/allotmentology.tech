@@ -30,8 +30,12 @@ export async function runJsonModule<T>(ctx: JsonRunContext, opts: {
   inputSnapshot: Record<string, unknown>;
   temperature?: number;
   maxTokens?: number;
+  /** Override default constitution layering (e.g. Mitchell persona). */
+  buildSystemPrompt?: (moduleDirective: string) => string;
 }): Promise<{ value: T; logId: string }> {
-  const system = buildLayeredSystemPrompt(opts.moduleDirective);
+  const build =
+    opts.buildSystemPrompt ?? buildLayeredSystemPrompt;
+  const system = build(opts.moduleDirective);
   const messages = chatMessages(system, opts.userPayload);
 
   const result = await ctx.provider.complete({

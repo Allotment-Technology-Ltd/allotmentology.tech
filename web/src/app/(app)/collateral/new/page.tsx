@@ -11,7 +11,8 @@ export default function NewCollateralPage() {
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
           Store Markdown snippets you can paste or reference from submission
-          packs. Bump version is automatic on each save when editing.
+          packs. Bump version is automatic on each save when editing. Use Improve,
+          Expand, or Shorten next to the body field for AI-assisted drafting.
         </p>
       </div>
       <CollateralFormClient

@@ -1,10 +1,16 @@
 import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/empty-state";
-import { PACK_STATUS_LABEL } from "@/lib/opportunities/constants";
+import {
+  PACK_STATUS_LABEL,
+  type PackStatus,
+} from "@/lib/opportunities/constants";
 import { formatDate } from "@/lib/format";
+import { loadSubmissionPacksIndex } from "@/lib/submission-packs/queries";
 
-import { loadSubmissionPacksIndex } from "./actions";
+function packStatusLabel(status: string): string {
+  return PACK_STATUS_LABEL[status as PackStatus] ?? status;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +65,7 @@ export default async function SubmissionsPage() {
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-200">
-                  {PACK_STATUS_LABEL[pack.status]}
+                  {packStatusLabel(pack.status)}
                 </span>
                 <Link
                   href={`/opportunities/${pack.opportunityId}#packs`}

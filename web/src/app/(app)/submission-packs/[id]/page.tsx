@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { evaluateSubmissionPackReadiness } from "@/lib/submission-packs/readiness";
 
-import { loadSubmissionPackDetail } from "../actions";
+import { loadSubmissionPackDetail } from "@/lib/submission-packs/queries";
 import { PackWorkspaceClient } from "../pack-workspace-client";
 
 export const dynamic = "force-dynamic";

@@ -26,7 +26,9 @@ export default async function EditCollateralPage({
             Edit collateral
           </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            Current version v{item.version} · saving creates v{item.version + 1}
+            Current version v{item.version} · saving creates v{item.version + 1}.
+            AI writing aid (Improve / Expand / Shorten) updates the body in place —
+            review then save.
           </p>
         </div>
         <Link

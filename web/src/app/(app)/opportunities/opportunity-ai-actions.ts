@@ -17,10 +17,18 @@ import {
   getSessionUserEmailOrRedirect,
 } from "@/lib/auth/session-user.server";
 import { getServerDb } from "@/lib/db/server";
-import { tryCreateFundingOpsAiContext } from "@/lib/ai/runtime";
+import {
+  tryCreateFundingOpsAiContext,
+  type FundingOpsAiContext,
+} from "@/lib/ai/runtime";
 import { chooseNarrativeAngle } from "@/lib/ai/skills/choose-narrative-angle";
 import { extractGrantDetails } from "@/lib/ai/skills/extract-grant-details";
+import {
+  formatMitchellBriefForStorage,
+  runMitchellIntakeBrief,
+} from "@/lib/ai/skills/mitchell-intake";
 import { runOpportunityFullScoring } from "@/lib/ai/skills/opportunity-full-scoring";
+import { DEFAULT_APPLICATION_FORMS_MD } from "@/lib/submission-packs/application-forms-template";
 import { detectScopeConflict } from "@/lib/ai/skills/detect-scope-conflict";
 import { runOpportunityScout } from "@/lib/ai/subagents/opportunity-scout";
 import { fetchGrantPagePlainText } from "@/lib/grant-url/fetch-page-text";
@@ -305,6 +313,81 @@ async function loadKnowledgeForOpportunity(opportunityId: string) {
     .orderBy(desc(opportunityKnowledgeAssets.priority), asc(knowledgeAssets.title));
 }
 
+function scoreDim(n: number | null | undefined, fallback: number): number {
+  if (n == null || n < 1 || n > 5) return fallback;
+  return n;
+}
+
+/**
+ * Fetch grant page text, run extract-grant-details, persist fields on the opportunity row.
+ */
+async function extractGrantIntoOpportunity(
+  opportunityId: string,
+  o: typeof opportunities.$inferSelect,
+  ctx: FundingOpsAiContext,
+): Promise<
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      fetched: { text: string; finalUrl: string };
+      extractLogId: string;
+      extractModel: string;
+    }
+> {
+  const grantUrl = o.grantUrl?.trim();
+  if (!grantUrl) {
+    return { ok: false, error: "Add and save a grant URL first." };
+  }
+
+  const fetched = await fetchGrantPagePlainText(grantUrl);
+  if (!fetched.ok) {
+    return { ok: false, error: fetched.error };
+  }
+
+  const approvedCollateral = await loadApprovedCollateralExcerpts();
+  const gen = await extractGrantDetails(ctx, {
+    pageText: fetched.text,
+    pageUrl: fetched.finalUrl,
+    existingTitle: o.title,
+    approvedCollateral,
+  });
+
+  const v = gen.value;
+  const db = getServerDb();
+  const closesAt = parseOptionalIso(v.closesAtIso ?? null);
+  const estRaw = v.estimatedValue?.trim().replace(/,/g, "") ?? "";
+  const est =
+    estRaw && /^[0-9]+(\.[0-9]+)?$/.test(estRaw) ? estRaw : null;
+
+  await db
+    .update(opportunities)
+    .set({
+      summary: v.summary?.trim() ? v.summary.trim() : o.summary,
+      eligibilityNotes: v.eligibilityNotes?.trim()
+        ? v.eligibilityNotes.trim()
+        : o.eligibilityNotes,
+      closesAt: closesAt ?? o.closesAt,
+      estimatedValue: est ?? o.estimatedValue,
+      currencyCode:
+        v.currencyCode && /^[A-Z]{3}$/i.test(v.currencyCode)
+          ? v.currencyCode.toUpperCase()
+          : o.currencyCode,
+      funderName: v.funderName?.trim() ? v.funderName.trim() : o.funderName,
+      productFitAssessmentMd: v.productFitAssessmentMd?.trim()
+        ? v.productFitAssessmentMd.trim()
+        : o.productFitAssessmentMd,
+      updatedAt: new Date(),
+    })
+    .where(eq(opportunities.id, opportunityId));
+
+  return {
+    ok: true,
+    fetched,
+    extractLogId: gen.logId,
+    extractModel: gen.model,
+  };
+}
+
 /**
  * Fetch the grant URL, extract structured fields + product weighting, persist on the opportunity.
  */
@@ -318,15 +401,6 @@ export async function enrichOpportunityFromGrantUrl(
       return { ok: false, error: loaded.error };
     }
     const o = loaded.opportunity;
-    const grantUrl = o.grantUrl?.trim();
-    if (!grantUrl) {
-      return { ok: false, error: "Add and save a grant URL first." };
-    }
-
-    const fetched = await fetchGrantPagePlainText(grantUrl);
-    if (!fetched.ok) {
-      return { ok: false, error: fetched.error };
-    }
 
     const userId = await getAppUserIdByEmail(email);
     const ctx = await tryCreateFundingOpsAiContext({
@@ -341,38 +415,131 @@ export async function enrichOpportunityFromGrantUrl(
       };
     }
 
-    const approvedCollateral = await loadApprovedCollateralExcerpts();
-    const gen = await extractGrantDetails(ctx, {
-      pageText: fetched.text,
-      pageUrl: fetched.finalUrl,
-      existingTitle: o.title,
+    const ex = await extractGrantIntoOpportunity(opportunityId, o, ctx);
+    if (!ex.ok) {
+      return ex;
+    }
+
+    revalidatePath(`/opportunities/${opportunityId}`);
+    revalidatePath(`/opportunities/${opportunityId}/edit`);
+
+    return { ok: true, model: ex.extractModel, logId: ex.extractLogId };
+  } catch (e) {
+    return handleAiError(e);
+  }
+}
+
+export type MitchellGrantIntakeResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * Mitchell intake: fetch grant page → extract fields → full triage scores → Mitchell brief
+ * (persona + asks + writing hints using unified form scaffold). Persists `mitchell_brief_md`.
+ */
+export async function runMitchellGrantIntake(
+  opportunityId: string,
+): Promise<MitchellGrantIntakeResult> {
+  try {
+    const { email } = await getSessionUserEmailOrRedirect();
+    const loaded = await loadOpportunityOrError(opportunityId);
+    if (!loaded.ok) {
+      return { ok: false, error: loaded.error };
+    }
+    const o = loaded.opportunity;
+
+    const userId = await getAppUserIdByEmail(email);
+    if (!userId) {
+      return { ok: false, error: "Local user profile missing; reload and try again." };
+    }
+
+    const ctx = await tryCreateFundingOpsAiContext({
+      userId,
+      opportunityId: o.id,
+    });
+    if (!ctx) {
+      return {
+        ok: false,
+        error:
+          "AI is not configured. Add your key under Settings → BYOK & AI keys, or set AI_API_KEY / OPENAI_API_KEY on the server.",
+      };
+    }
+
+    const ex = await extractGrantIntoOpportunity(opportunityId, o, ctx);
+    if (!ex.ok) {
+      return ex;
+    }
+
+    revalidatePath(`/opportunities/${opportunityId}`);
+    revalidatePath(`/opportunities/${opportunityId}/edit`);
+
+    const scoringR = await runAiFullOpportunityScoring(opportunityId, {
+      preFetchedGrantExcerpt: ex.fetched.text,
+    });
+    if (!scoringR.ok) {
+      return { ok: false, error: scoringR.error };
+    }
+
+    const db = getServerDb();
+    const [o2] = await db
+      .select()
+      .from(opportunities)
+      .where(eq(opportunities.id, opportunityId))
+      .limit(1);
+    const [sc] = await db
+      .select()
+      .from(opportunityScores)
+      .where(eq(opportunityScores.opportunityId, opportunityId))
+      .limit(1);
+
+    if (!o2 || !sc?.rationale) {
+      return {
+        ok: false,
+        error: "Scoring did not produce a rationale; try again.",
+      };
+    }
+
+    const [knowledgeLinks, approvedCollateral] = await Promise.all([
+      loadKnowledgeForOpportunity(opportunityId),
+      loadApprovedCollateralExcerpts(),
+    ]);
+
+    const mitchellGen = await runMitchellIntakeBrief(ctx, {
+      opportunity: {
+        title: o2.title,
+        funderName: o2.funderName,
+        summary: o2.summary,
+        eligibilityNotes: o2.eligibilityNotes,
+        grantUrl: o2.grantUrl,
+        productFitAssessmentMd: o2.productFitAssessmentMd,
+      },
+      scoring: {
+        eligibilityFit: scoreDim(sc.eligibilityFit, 3),
+        restormelFit: scoreDim(sc.restormelFit, 3),
+        sophiaFit: scoreDim(sc.sophiaFit, 3),
+        cashValue: scoreDim(sc.cashValue, 3),
+        burnReductionValue: scoreDim(sc.burnReductionValue, 3),
+        effortRequired: scoreDim(sc.effortRequired, 3),
+        strategicValue: scoreDim(sc.strategicValue, 3),
+        timeSensitivity: scoreDim(sc.timeSensitivity, 3),
+        rationale: sc.rationale,
+      },
+      knowledgeLinks: knowledgeLinks.map((k) => ({
+        title: k.title,
+        summary: k.summary,
+        url: k.url,
+      })),
       approvedCollateral,
+      grantPageExcerpt: ex.fetched.text.slice(0, 12_000),
+      applicationFormGuidanceExcerpt: DEFAULT_APPLICATION_FORMS_MD.slice(0, 6000),
     });
 
-    const v = gen.value;
-    const db = getServerDb();
-    const closesAt = parseOptionalIso(v.closesAtIso ?? null);
-    const estRaw = v.estimatedValue?.trim().replace(/,/g, "") ?? "";
-    const est =
-      estRaw && /^[0-9]+(\.[0-9]+)?$/.test(estRaw) ? estRaw : null;
+    const briefMd = formatMitchellBriefForStorage(mitchellGen.value);
 
     await db
       .update(opportunities)
       .set({
-        summary: v.summary?.trim() ? v.summary.trim() : o.summary,
-        eligibilityNotes: v.eligibilityNotes?.trim()
-          ? v.eligibilityNotes.trim()
-          : o.eligibilityNotes,
-        closesAt: closesAt ?? o.closesAt,
-        estimatedValue: est ?? o.estimatedValue,
-        currencyCode:
-          v.currencyCode && /^[A-Z]{3}$/i.test(v.currencyCode)
-            ? v.currencyCode.toUpperCase()
-            : o.currencyCode,
-        funderName: v.funderName?.trim() ? v.funderName.trim() : o.funderName,
-        productFitAssessmentMd: v.productFitAssessmentMd?.trim()
-          ? v.productFitAssessmentMd.trim()
-          : o.productFitAssessmentMd,
+        mitchellBriefMd: briefMd,
         updatedAt: new Date(),
       })
       .where(eq(opportunities.id, opportunityId));
@@ -380,7 +547,7 @@ export async function enrichOpportunityFromGrantUrl(
     revalidatePath(`/opportunities/${opportunityId}`);
     revalidatePath(`/opportunities/${opportunityId}/edit`);
 
-    return { ok: true, model: gen.model, logId: gen.logId };
+    return { ok: true };
   } catch (e) {
     return handleAiError(e);
   }
@@ -388,9 +555,11 @@ export async function enrichOpportunityFromGrantUrl(
 
 /**
  * Populate all triage score dimensions + rationale from opportunity context (including grant URL text when present).
+ * Pass `preFetchedGrantExcerpt` to avoid a second fetch when the page was already loaded (e.g. Mitchell intake).
  */
 export async function runAiFullOpportunityScoring(
   opportunityId: string,
+  options?: { preFetchedGrantExcerpt?: string | null },
 ): Promise<AiFullScoringResult> {
   try {
     const { email } = await getSessionUserEmailOrRedirect();
@@ -423,11 +592,17 @@ export async function runAiFullOpportunityScoring(
     ]);
 
     let grantPageExcerpt: string | null = null;
-    const grantUrl = o.grantUrl?.trim();
-    if (grantUrl) {
-      const fetched = await fetchGrantPagePlainText(grantUrl);
-      if (fetched.ok) {
-        grantPageExcerpt = fetched.text.slice(0, 12_000);
+    if (options?.preFetchedGrantExcerpt !== undefined) {
+      const raw = options.preFetchedGrantExcerpt;
+      grantPageExcerpt =
+        raw != null && raw.trim() !== "" ? raw.slice(0, 12_000) : null;
+    } else {
+      const grantUrl = o.grantUrl?.trim();
+      if (grantUrl) {
+        const fetched = await fetchGrantPagePlainText(grantUrl);
+        if (fetched.ok) {
+          grantPageExcerpt = fetched.text.slice(0, 12_000);
+        }
       }
     }
 

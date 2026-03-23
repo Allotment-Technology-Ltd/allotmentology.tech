@@ -85,6 +85,13 @@
       "when": 1774600000000,
       "tag": "0011_user_ai_catalog_provider_id",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1774700000000,
+      "tag": "0012_opportunity_mitchell_brief",
+      "breakpoints": true
     }
   ]
 }

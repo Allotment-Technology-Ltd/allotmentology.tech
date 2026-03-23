@@ -1,11 +1,11 @@
 "use server";
 
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { opportunities, submissionPacks } from "@/db/schema/tables";
+import { submissionPacks } from "@/db/schema/tables";
 import { getAuthServer } from "@/lib/auth/server";
 import { getServerDb } from "@/lib/db/server";
 import { DEFAULT_APPLICATION_FORMS_MD } from "@/lib/submission-packs/application-forms-template";
@@ -158,46 +158,6 @@ export async function resetApplicationFormsByPackId(packId: string): Promise<Pac
   const fd = new FormData();
   fd.set("packId", packId);
   return resetApplicationFormsToDefault({ error: null }, fd);
-}
-
-export async function loadSubmissionPacksIndex() {
-  await requireSessionUser();
-  const db = getServerDb();
-  return db
-    .select({
-      pack: submissionPacks,
-      opportunityTitle: opportunities.title,
-      funderName: opportunities.funderName,
-    })
-    .from(submissionPacks)
-    .innerJoin(
-      opportunities,
-      eq(submissionPacks.opportunityId, opportunities.id),
-    )
-    .orderBy(desc(submissionPacks.updatedAt));
-}
-
-export async function loadSubmissionPackDetail(packId: string) {
-  await requireSessionUser();
-  if (!z.string().uuid().safeParse(packId).success) {
-    return null;
-  }
-  const db = getServerDb();
-  const [row] = await db
-    .select({
-      pack: submissionPacks,
-      opportunityTitle: opportunities.title,
-      opportunityId: opportunities.id,
-      funderName: opportunities.funderName,
-    })
-    .from(submissionPacks)
-    .innerJoin(
-      opportunities,
-      eq(submissionPacks.opportunityId, opportunities.id),
-    )
-    .where(eq(submissionPacks.id, packId))
-    .limit(1);
-  return row ?? null;
 }
 
 export async function runWritingAgentForPack(
