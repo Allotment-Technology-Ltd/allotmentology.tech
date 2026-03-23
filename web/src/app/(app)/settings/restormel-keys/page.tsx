@@ -1,11 +1,19 @@
 import Link from "next/link";
 
+import {
+  RESTORMEL_KEYS_DASHBOARD_URL,
+  RESTORMEL_KEYS_HOME,
+  restormelKeysApiPortalUrl,
+} from "@/lib/restormel-keys-urls";
+
 export const dynamic = "force-dynamic";
 
 const embedClass =
   "h-[65vh] w-full rounded-md border border-zinc-800 bg-zinc-950";
 
 export default function RestormelKeysSettingsPage() {
+  const apiPortalUrl = restormelKeysApiPortalUrl();
+
   return (
     <div className="space-y-8">
       <div>
@@ -16,59 +24,80 @@ export default function RestormelKeysSettingsPage() {
           BYOK and AI provider routing
         </h1>
         <p className="mt-2 max-w-3xl text-sm text-zinc-400">
-          Bring your own model-provider keys and control routing for the AI writing
-          agent in one place. Use the embedded portal below, or open in a new tab
-          if your browser blocks embedded sign-in.
+          Use the Restormel dashboard to sign in, connect provider keys, and
+          define routes. The Gateway API reference lives on a separate docs host
+          (Zuplo); open it in a new tab if embedding is blocked.
         </p>
       </div>
 
       <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/30 p-5">
         <h2 className="text-lg font-medium text-zinc-100">BYOK quick start</h2>
         <ol className="list-decimal space-y-1 pl-4 text-sm text-zinc-300">
-          <li>Open the BYOK portal.</li>
-          <li>Add your provider key (OpenAI, Anthropic, etc).</li>
-          <li>Set the default routed model for writing tasks.</li>
-          <li>Return to submission packs and run the writing agent.</li>
+          <li>
+            Open the{" "}
+            <a
+              href={RESTORMEL_KEYS_DASHBOARD_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sky-400 underline-offset-2 hover:text-sky-300 hover:underline"
+            >
+              Restormel Keys dashboard
+            </a>{" "}
+            and sign in with GitHub.
+          </li>
+          <li>Create or select a workspace and project for this app.</li>
+          <li>
+            Connect provider credentials (OpenAI, Anthropic, etc.) and create
+            routes as needed.
+          </li>
+          <li>
+            Copy your Gateway key into Vercel as{" "}
+            <code className="rounded bg-zinc-800 px-1">RESTORMEL_KEYS_API_KEY</code>{" "}
+            and set{" "}
+            <code className="rounded bg-zinc-800 px-1">AI_PROVIDER</code> to{" "}
+            <code className="rounded bg-zinc-800 px-1">restormel-keys</code>, then
+            run the writing agent from submission packs.
+          </li>
         </ol>
         <div className="flex flex-wrap gap-3 text-sm">
           <a
-            href="https://restormel.dev/keys/api-portal"
+            href={RESTORMEL_KEYS_DASHBOARD_URL}
             target="_blank"
             rel="noreferrer"
             className="rounded-md bg-zinc-100 px-3 py-1.5 font-medium text-zinc-900 hover:bg-white"
           >
-            Manage BYOK keys
+            Open dashboard (keys &amp; routes)
           </a>
           <a
-            href="https://restormel.dev/keys/dashboard"
+            href={apiPortalUrl}
             target="_blank"
             rel="noreferrer"
             className="rounded-md border border-zinc-700 px-3 py-1.5 text-zinc-200 hover:bg-zinc-800"
           >
-            Open routing dashboard
+            Gateway API reference
           </a>
         </div>
       </section>
 
       <div className="flex flex-wrap gap-3 text-sm">
         <a
-          href="https://restormel.dev/keys/api-portal"
+          href={RESTORMEL_KEYS_DASHBOARD_URL}
           target="_blank"
           rel="noreferrer"
           className="rounded-md bg-zinc-100 px-3 py-1.5 font-medium text-zinc-900 hover:bg-white"
         >
-          Open BYOK portal
+          Dashboard
         </a>
         <a
-          href="https://restormel.dev/keys/dashboard"
+          href={apiPortalUrl}
           target="_blank"
           rel="noreferrer"
           className="rounded-md border border-zinc-700 px-3 py-1.5 text-zinc-200 hover:bg-zinc-800"
         >
-          Open dashboard
+          API portal (Zuplo)
         </a>
         <a
-          href="https://restormel.dev/keys/docs/walkthrough/phase-0-inventory"
+          href={`${RESTORMEL_KEYS_HOME}/docs/walkthrough/phase-0-inventory`}
           target="_blank"
           rel="noreferrer"
           className="rounded-md border border-zinc-700 px-3 py-1.5 text-zinc-200 hover:bg-zinc-800"
@@ -79,28 +108,36 @@ export default function RestormelKeysSettingsPage() {
 
       <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/30 p-5">
         <h2 className="text-lg font-medium text-zinc-100">
-          Embedded BYOK portal
+          Embedded dashboard
         </h2>
         <iframe
-          title="Restormel Keys BYOK Portal"
-          src="https://restormel.dev/keys/api-portal"
+          title="Restormel Keys Dashboard"
+          src={RESTORMEL_KEYS_DASHBOARD_URL}
           className={embedClass}
         />
         <p className="text-xs text-zinc-500">
-          If this panel does not load, use the Manage BYOK keys button above to
-          open it in a new tab and sign in there.
+          If this panel is blank or blocked, open the dashboard in a new tab
+          using the button above.
         </p>
       </section>
 
       <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/30 p-5">
         <h2 className="text-lg font-medium text-zinc-100">
-          Embedded routing dashboard
+          Gateway API reference
         </h2>
-        <iframe
-          title="Restormel Keys Dashboard"
-          src="https://restormel.dev/keys/dashboard"
-          className={embedClass}
-        />
+        <p className="text-sm text-zinc-400">
+          The interactive API docs are hosted on Zuplo (linked from the official
+          dashboard as &quot;API portal&quot;). We do not embed them here because
+          many doc sites block iframes.
+        </p>
+        <a
+          href={apiPortalUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex rounded-md border border-zinc-600 bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-800"
+        >
+          Open API portal in new tab →
+        </a>
       </section>
 
       <section className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/30 p-5 text-sm text-zinc-300">
@@ -109,8 +146,7 @@ export default function RestormelKeysSettingsPage() {
         </h2>
         <p>
           For local development in Cursor, use Restormel Keys via MCP or AIPP
-          alongside this embedded UI. This app already supports switching the
-          AI backend by setting{" "}
+          alongside this UI. This app can use the Restormel adapter by setting{" "}
           <code className="rounded bg-zinc-800 px-1">AI_PROVIDER</code> to{" "}
           <code className="rounded bg-zinc-800 px-1">restormel-keys</code>.
         </p>

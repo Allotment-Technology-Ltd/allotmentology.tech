@@ -178,6 +178,8 @@ Project **Cursor rules** under `.cursor/rules/` describe when to use **contact@r
 | OAuth client IDs/secrets | Neon Auth configuration (not in this repo) |
 | OpenAI (or compatible) key | `web/.env` / Vercel → `AI_API_KEY` or `OPENAI_API_KEY` |
 | Restormel adapter key | `web/.env` / Vercel → `RESTORMEL_KEYS_API_KEY` (when `AI_PROVIDER=restormel-keys`) |
+| Restormel API docs portal (Settings UI) | Optional `NEXT_PUBLIC_RESTORMEL_KEYS_API_PORTAL_URL` if the Zuplo portal URL changes; see `restormel.dev/keys/dashboard` → “API portal” |
+
 
 **Never commit:** `web/.env`, production URLs with embedded passwords, API keys.
 
