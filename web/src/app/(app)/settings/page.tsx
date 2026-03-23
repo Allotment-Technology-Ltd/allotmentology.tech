@@ -19,6 +19,18 @@ export default function SettingsPage() {
       <ul className="max-w-lg space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/30 p-4 text-sm">
         <li>
           <Link
+            href="/settings/restormel-keys"
+            className="font-medium text-sky-400 hover:text-sky-300 hover:underline"
+          >
+            BYOK and AI provider routing
+          </Link>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            Add your own OpenAI/Anthropic/etc keys and route models for the writing
+            agent
+          </p>
+        </li>
+        <li>
+          <Link
             href="/account/settings"
             className="font-medium text-sky-400 hover:text-sky-300 hover:underline"
           >
@@ -42,17 +54,6 @@ export default function SettingsPage() {
           >
             Back to opportunities
           </Link>
-        </li>
-        <li>
-          <Link
-            href="/settings/restormel-keys"
-            className="font-medium text-sky-400 hover:text-sky-300 hover:underline"
-          >
-            Restormel Keys
-          </Link>
-          <p className="mt-0.5 text-xs text-zinc-500">
-            Embedded key management and routing dashboard
-          </p>
         </li>
       </ul>
 
