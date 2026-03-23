@@ -37,6 +37,15 @@ export default function DashboardPage() {
           submission packs, and track deadlines. Everything stays in Neon until
           you export or copy out.
         </p>
+        <p className="mt-2 text-xs text-zinc-500">
+          Production:{" "}
+          <a
+            href="https://allotment.work"
+            className="text-sky-400 underline-offset-2 hover:text-sky-300 hover:underline"
+          >
+            allotment.work
+          </a>
+        </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
