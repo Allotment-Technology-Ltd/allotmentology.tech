@@ -66,6 +66,33 @@ const knowledgeQuickSchema = z.object({
   priority: z.coerce.number().int().min(1).max(5).default(3),
 });
 
+const githubRepoQuickSchema = z.object({
+  opportunityId: z.string().uuid(),
+  repoUrl: z
+    .string()
+    .trim()
+    .url()
+    .regex(/^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/i, {
+      message: "Enter a GitHub repository URL like https://github.com/org/repo",
+    }),
+  summary: z.string().trim().max(4000).optional().default(""),
+  relevanceNote: z.string().trim().max(2000).optional().default(""),
+  priority: z.coerce.number().int().min(1).max(5).default(3),
+});
+
+function deriveGithubRepoTitle(repoUrl: string): string {
+  try {
+    const u = new URL(repoUrl);
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0]}/${parts[1]} (GitHub repository)`;
+    }
+  } catch {
+    // no-op
+  }
+  return "GitHub repository";
+}
+
 const opportunityKnowledgeLinkSchema = z.object({
   opportunityId: z.string().uuid(),
   knowledgeAssetId: z.string().uuid(),
@@ -386,6 +413,56 @@ export async function createAndLinkKnowledgeAsset(
     opportunityId: parsed.data.opportunityId,
     knowledgeAssetId: asset.id,
     relevanceNote: parsed.data.relevanceNote || null,
+    priority: parsed.data.priority,
+  });
+
+  revalidatePath(`/opportunities/${parsed.data.opportunityId}`);
+  revalidatePath("/knowledge");
+  return { error: null };
+}
+
+export async function createAndLinkGithubRepoAsset(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const user = await requireSessionUser();
+  const parsed = githubRepoQuickSchema.safeParse(
+    Object.fromEntries(formData.entries()),
+  );
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Invalid GitHub repository URL.",
+    };
+  }
+
+  const appUserId = await getAppUserIdByEmail(user.email ?? "");
+  if (!appUserId) {
+    return { error: "Local user profile missing; reload and try again." };
+  }
+
+  const db = getServerDb();
+  const [asset] = await db
+    .insert(knowledgeAssets)
+    .values({
+      title: deriveGithubRepoTitle(parsed.data.repoUrl),
+      sourceType: "repository",
+      url: parsed.data.repoUrl,
+      summary: parsed.data.summary || null,
+      tags: ["github", "repository"],
+      createdByUserId: appUserId,
+      updatedAt: new Date(),
+    })
+    .returning({ id: knowledgeAssets.id });
+
+  if (!asset) {
+    return { error: "Could not create GitHub repository knowledge asset." };
+  }
+
+  await db.insert(opportunityKnowledgeAssets).values({
+    opportunityId: parsed.data.opportunityId,
+    knowledgeAssetId: asset.id,
+    relevanceNote:
+      parsed.data.relevanceNote || "Codebase and implementation context.",
     priority: parsed.data.priority,
   });
 

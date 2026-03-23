@@ -38,6 +38,31 @@ const assetSchema = z.object({
   tags: z.string().trim().optional().default(""),
 });
 
+const githubRepoSchema = z.object({
+  repoUrl: z
+    .string()
+    .trim()
+    .url()
+    .regex(/^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/i, {
+      message: "Enter a GitHub repository URL like https://github.com/org/repo",
+    }),
+  summary: z.string().trim().max(4000).optional().default(""),
+  tags: z.string().trim().optional().default(""),
+});
+
+function deriveGithubRepoTitle(repoUrl: string): string {
+  try {
+    const u = new URL(repoUrl);
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0]}/${parts[1]} (GitHub repository)`;
+    }
+  } catch {
+    // no-op
+  }
+  return "GitHub repository";
+}
+
 const styleProfileSchema = z.object({
   profileName: z.string().trim().min(2).max(255),
   voiceDescription: z.string().trim().min(8).max(6000),
@@ -80,6 +105,41 @@ export async function createKnowledgeAsset(
     url: parsed.data.url,
     summary: parsed.data.summary || null,
     tags,
+    createdByUserId: appUserId,
+    updatedAt: new Date(),
+  });
+
+  revalidatePath("/knowledge");
+}
+
+export async function createGithubRepoKnowledgeAsset(
+  formData: FormData,
+): Promise<void> {
+  const user = await requireSessionUser();
+  const parsed = githubRepoSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid GitHub URL.");
+  }
+
+  const appUserId = await getAppUserIdByEmail(user.email ?? "");
+  if (!appUserId) throw new Error("Local user profile missing; reload and try again.");
+
+  const autoTags = ["github", "repository"];
+  const extraTags =
+    parsed.data.tags.trim().length === 0
+      ? []
+      : parsed.data.tags
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean);
+
+  const db = getServerDb();
+  await db.insert(knowledgeAssets).values({
+    title: deriveGithubRepoTitle(parsed.data.repoUrl),
+    sourceType: "repository",
+    url: parsed.data.repoUrl,
+    summary: parsed.data.summary || null,
+    tags: Array.from(new Set([...autoTags, ...extraTags])),
     createdByUserId: appUserId,
     updatedAt: new Date(),
   });

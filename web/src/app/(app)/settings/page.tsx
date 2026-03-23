@@ -43,6 +43,17 @@ export default function SettingsPage() {
             Back to opportunities
           </Link>
         </li>
+        <li>
+          <Link
+            href="/settings/restormel-keys"
+            className="font-medium text-sky-400 hover:text-sky-300 hover:underline"
+          >
+            Restormel Keys
+          </Link>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            Embedded key management and routing dashboard
+          </p>
+        </li>
       </ul>
 
       <p className="max-w-xl text-xs text-zinc-600">

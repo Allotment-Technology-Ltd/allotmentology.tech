@@ -19,6 +19,7 @@ import {
 
 import {
   addConflictForOpportunity,
+  createAndLinkGithubRepoAsset,
   createAndLinkKnowledgeAsset,
   addPackForOpportunity,
   addTaskForOpportunity,
@@ -471,6 +472,70 @@ export function KnowledgeQuickCreateForm({ opportunityId }: { opportunityId: str
         className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
       >
         Create and link asset
+      </button>
+    </form>
+  );
+}
+
+export function GithubRepoQuickLinkForm({ opportunityId }: { opportunityId: string }) {
+  const router = useRouter();
+  const [state, formAction, pending] = useActionState(
+    createAndLinkGithubRepoAsset,
+    initial,
+  );
+  const pendingRef = useRef(false);
+  useEffect(() => {
+    if (pendingRef.current && !pending && state.error === null) {
+      router.refresh();
+    }
+    pendingRef.current = pending;
+  }, [pending, state.error, router]);
+
+  return (
+    <form
+      action={formAction}
+      className="mt-4 space-y-2 rounded-md border border-zinc-800 bg-zinc-950/40 p-3"
+    >
+      <input type="hidden" name="opportunityId" value={opportunityId} />
+      {state.error ? <p className="text-sm text-red-400">{state.error}</p> : null}
+      <label className={label} htmlFor="githubRepoUrl">
+        Quick link a GitHub repository
+      </label>
+      <input
+        id="githubRepoUrl"
+        name="repoUrl"
+        type="url"
+        required
+        placeholder="https://github.com/org/repo"
+        className={input}
+      />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <input
+          name="relevanceNote"
+          placeholder="Why this repo matters (optional)"
+          className={input}
+        />
+        <input
+          name="priority"
+          type="number"
+          min={1}
+          max={5}
+          defaultValue={4}
+          className={input}
+        />
+      </div>
+      <textarea
+        name="summary"
+        rows={2}
+        placeholder="Short summary (optional)"
+        className={input}
+      />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
+      >
+        Add GitHub repo
       </button>
     </form>
   );

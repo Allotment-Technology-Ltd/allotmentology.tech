@@ -1,4 +1,12 @@
-import { createKnowledgeAsset, addWritingStyleSample, deleteKnowledgeAsset, deleteWritingStyleSample, loadKnowledgePageData, saveWritingStyleProfile } from "./actions";
+import {
+  addWritingStyleSample,
+  createGithubRepoKnowledgeAsset,
+  createKnowledgeAsset,
+  deleteKnowledgeAsset,
+  deleteWritingStyleSample,
+  loadKnowledgePageData,
+  saveWritingStyleProfile,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +31,38 @@ export default async function KnowledgePage() {
           Store reusable source material (including repository links), then maintain a style profile and samples so AI drafts match your voice.
         </p>
       </div>
+
+      <section className={card}>
+        <h2 className="text-lg font-medium text-zinc-100">
+          Quick add GitHub repository
+        </h2>
+        <form action={createGithubRepoKnowledgeAsset} className="space-y-2">
+          <input
+            name="repoUrl"
+            required
+            type="url"
+            placeholder="https://github.com/org/repo"
+            className={input}
+          />
+          <textarea
+            name="summary"
+            rows={2}
+            placeholder="Why this repo is relevant (optional)"
+            className={input}
+          />
+          <input
+            name="tags"
+            placeholder="extra tags (comma-separated, optional)"
+            className={input}
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-white"
+          >
+            Add GitHub repo
+          </button>
+        </form>
+      </section>
 
       <section className={card}>
         <h2 className="text-lg font-medium text-zinc-100">Add knowledge asset</h2>

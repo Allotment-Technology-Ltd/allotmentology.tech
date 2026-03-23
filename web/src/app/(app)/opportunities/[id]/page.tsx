@@ -16,6 +16,7 @@ import { DeleteOpportunityButton } from "../delete-opportunity-button";
 import {
   ConflictQuickForm,
   DeleteEntityButton,
+  GithubRepoQuickLinkForm,
   KnowledgeLinkForm,
   KnowledgeQuickCreateForm,
   PackQuickForm,
@@ -208,6 +209,7 @@ export default async function OpportunityDetailPage({
             ))}
           </ul>
         )}
+        <GithubRepoQuickLinkForm opportunityId={id} />
         <KnowledgeLinkForm opportunityId={id} options={data.availableKnowledge} />
         <KnowledgeQuickCreateForm opportunityId={id} />
       </section>
