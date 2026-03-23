@@ -32,9 +32,10 @@ export function MitchellSectionDraftPanel(props: {
       <p className="text-sm text-zinc-500">
         Add{" "}
         <strong className="text-zinc-400">Knowledge links</strong> (LinkedIn, CV, past
-        applications) above, then describe the section you need. Mitchell writes a first
-        draft with placeholders and tells you exactly what to bring back to fill them
-        in.
+        applications) above, then describe the section. Mitchell drafts like an assessor is
+        reading it: clear fit to criteria, evidence over adjectives, and a QC list before you
+        paste into the portal. You get placeholders where facts are missing — plus what to
+        fetch to replace them.
       </p>
 
       <div>
@@ -154,7 +155,7 @@ export function MitchellSectionDraftPanel(props: {
           {props.initialFollowupMd?.trim() ? (
             <div className="rounded-md border border-amber-900/40 bg-amber-950/20 p-4">
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-200/80">
-                Blanks &amp; materials Mitchell needs
+                Win themes, QC, blanks &amp; materials
               </p>
               <MarkdownPreview markdown={props.initialFollowupMd} />
             </div>

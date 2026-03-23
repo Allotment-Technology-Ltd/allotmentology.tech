@@ -29,6 +29,7 @@ export function buildLocalFallbackCatalog(): CanonicalCatalogResponse {
           mode: "openai_compatible",
           requiresBaseUrl: false,
           requiresModel: true,
+          defaultApiBaseUrl: "https://api.openai.com/v1",
         },
       },
       {

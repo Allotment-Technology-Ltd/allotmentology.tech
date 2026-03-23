@@ -17,13 +17,24 @@ export class AiParseError extends Error {
   }
 }
 
+export type AiProviderErrorMeta = {
+  providerId?: string;
+  modelId?: string;
+};
+
 export class AiProviderError extends Error {
   readonly code = "AI_PROVIDER_ERROR";
+  readonly providerId?: string;
+  readonly modelId?: string;
+
   constructor(
     message: string,
     readonly status?: number,
+    meta?: AiProviderErrorMeta,
   ) {
     super(message);
     this.name = "AiProviderError";
+    this.providerId = meta?.providerId;
+    this.modelId = meta?.modelId;
   }
 }

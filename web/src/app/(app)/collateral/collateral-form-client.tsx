@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef } from "react";
 
 import {
@@ -144,10 +145,27 @@ export function CollateralFormClient(props: {
           </div>
         </div>
         <p className="text-xs text-zinc-500">
-          Uses your BYOK / environment model. Review before saving — drafts are not auto-saved.
+          Uses your{" "}
+          <Link
+            href="/settings/restormel-keys"
+            className="text-sky-400/90 underline hover:text-sky-300"
+          >
+            BYOK
+          </Link>{" "}
+          default key (or server env AI when no key). The host, key, and model id must match
+          the same vendor (e.g. DeepSeek: base <code className="rounded bg-zinc-800 px-1">https://api.deepseek.com/v1</code>, model{" "}
+          <code className="rounded bg-zinc-800 px-1">deepseek-chat</code>).{" "}
+          <strong className="font-medium text-zinc-400">Mitchell</strong> (grant intake &amp; section
+          drafts) runs on each{" "}
+          <Link href="/opportunities" className="text-sky-400/90 underline hover:text-sky-300">
+            Opportunity
+          </Link>
+          , not here. Review before saving — drafts are not auto-saved.
         </p>
         {aiState.error ? (
-          <p className="text-sm text-red-400">{aiState.error}</p>
+          <div className="space-y-2 rounded-md border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+            <p className="whitespace-pre-wrap">{aiState.error}</p>
+          </div>
         ) : null}
         {!aiState.error && aiState.logId && aiState.model ? (
           <p className="text-sm text-emerald-400/90">

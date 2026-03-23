@@ -6,17 +6,19 @@
     "dev": "drizzle-kit migrate && next dev",
     "dev:only": "next dev",
     "build": "next build",
+    "vercel-build": "npm run db:migrate && npm run build",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seed.ts",
-    "restormel:patch": "npx @restormel/keys-cli patch"
+    "restormel:patch": "npx @restormel/keys-cli@0.1.4 patch",
+    "smoke:deploy": "bash scripts/smoke-deploy.sh"
   },
   "dependencies": {
     "@neondatabase/auth": "^0.1.0-beta.21",
     "@neondatabase/serverless": "^1.0.2",
-    "@restormel/keys": "^0.2.6",
+    "@restormel/keys": "^0.2.7",
     "drizzle-orm": "^0.45.1",
     "next": "16.2.1",
     "react": "19.2.4",
@@ -26,7 +28,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@restormel/keys-cli": "^0.1.3",
+    "@restormel/keys-cli": "^0.1.4",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

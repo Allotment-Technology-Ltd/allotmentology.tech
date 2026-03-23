@@ -16,12 +16,16 @@ export default async function ByokAiKeysSettingsPage() {
           Settings
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-50">
-          BYOK and AI provider routing
+          BYOK and AI keys
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-          Pick a provider and model from the lists, paste your API key, validate, then save.
-          Azure, local proxies, and fully custom hosts use a short URL + model field. Add another
-          provider anytime with <strong className="font-medium text-zinc-300">Add new key</strong>.
+          From this app, you only choose a <strong className="font-medium text-zinc-300">provider</strong>,{" "}
+          <strong className="font-medium text-zinc-300">model</strong>, and{" "}
+          <strong className="font-medium text-zinc-300">API key</strong>. Restormel Keys keeps the
+          canonical provider and model lists and the right API wiring so validation and drafting work
+          without extra fields. If the catalog feed is unavailable, a built-in list still gives you the
+          same three fields for common hosts; Azure, local, or custom gateways may ask for a base URL.
+          Use <strong className="font-medium text-zinc-300">Add new key</strong> for another provider.
         </p>
       </div>
 

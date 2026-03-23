@@ -147,10 +147,10 @@ export default async function EditOpportunityPage({
           <h2 className={sectionTitle}>Mitchell — grant intake</h2>
         </div>
         <p className="text-sm text-zinc-500">
-          Mitchell pulls the grant page once, fills what we can, runs full triage
-          scores, and writes a brief: what he sorted, what he needs from you, and
-          pointers that follow our unified application scaffold. Needs a saved grant
-          URL and AI configured under Settings.
+          Mitchell pulls the grant page once, fills what we can, runs full triage scores,
+          and writes a competitive brief: winning angle, what could sink you, section
+          pointers tied to the scaffold, and material asks. Needs a saved grant URL and AI
+          under Settings.
         </p>
         <OpportunityMitchellIntakeButton opportunityId={id} />
         {o.mitchellBriefMd?.trim() ? (

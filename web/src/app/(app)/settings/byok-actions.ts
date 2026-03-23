@@ -10,15 +10,22 @@ import {
   packApiKeyForStorage,
   shouldEncryptApiKeysAtRest,
 } from "@/lib/crypto/byok-secret";
+import { normalizeAnthropicCatalogModelId } from "@/lib/ai/anthropic-catalog-model-normalize";
 import { resolveCatalogNativeBaseUrl } from "@/lib/ai/provider/catalog-native-bases";
 import { getDefaultAiProvider } from "@/lib/ai/provider/env-config";
 import { validateOpenAiCompatibleChat } from "@/lib/ai/validate-openai-compatible";
-import { validateByokCatalogProvider } from "@/lib/ai/validate-native-provider";
+import {
+  isOpenAiCompatibleCatalogMode,
+  validateCatalogProviderKey,
+} from "@/lib/ai/validate-native-provider";
 import { getAuthServer } from "@/lib/auth/server";
 import { getServerDb } from "@/lib/db/server";
 import {
   fetchRestormelKeysCatalog,
+  findCatalogProviderById,
+  resolveOpenAiCompatibleBaseUrlForCatalogProvider,
   type ByokCatalogClientPayload,
+  type CatalogProviderSummary,
 } from "@/lib/restormel-keys/catalog";
 
 const BYOK_PATH = "/settings/restormel-keys";
@@ -43,17 +50,18 @@ function normalizeBaseUrl(url: string): string {
   return url.trim().replace(/\/+$/, "");
 }
 
-const CATALOG_PROVIDER_IDS = ["openai", "anthropic", "google"] as const;
-type CatalogProviderId = (typeof CATALOG_PROVIDER_IDS)[number];
-
-function parseCatalogProviderId(raw: unknown): CatalogProviderId | undefined {
-  if (typeof raw !== "string") return undefined;
-  const t = raw.trim();
-  return (CATALOG_PROVIDER_IDS as readonly string[]).includes(t)
-    ? (t as CatalogProviderId)
-    : undefined;
+function normalizeModelForCatalogProvider(providerId: string, model: string): string {
+  const m = model.trim();
+  if (providerId === "anthropic") {
+    return normalizeAnthropicCatalogModelId(m);
+  }
+  return m;
 }
 
+/**
+ * Preset / custom path: empty catalogProviderId → user supplies base URL.
+ * Catalog path: base URL only when `validation.requiresBaseUrl` (handled after catalog lookup).
+ */
 const validateSchema = z
   .object({
     providerName: z.string().trim().min(1).max(255),
@@ -63,8 +71,7 @@ const validateSchema = z
     catalogProviderId: z.string().trim().optional().default(""),
   })
   .superRefine((val, ctx) => {
-    const cid = parseCatalogProviderId(val.catalogProviderId);
-    if (cid) return;
+    if (val.catalogProviderId.trim() !== "") return;
     const u = val.baseUrl.trim();
     if (!u) {
       ctx.addIssue({
@@ -88,6 +95,65 @@ const addSchema = validateSchema.extend({
   label: z.string().trim().max(255).optional().default(""),
   isDefault: z.boolean(),
 });
+
+function resolveOpenAiCompatibleBaseForCatalogAction(
+  provider: CatalogProviderSummary,
+  userBaseUrl: string,
+): { ok: true; baseUrl: string } | { ok: false; message: string } {
+  const requiresBase = provider.validation?.requiresBaseUrl === true;
+  if (requiresBase) {
+    const u = userBaseUrl.trim();
+    if (!u) {
+      return { ok: false, message: "API base URL is required for this provider." };
+    }
+    const urlParse = z.string().url().safeParse(u);
+    if (!urlParse.success) {
+      return { ok: false, message: "API base URL must be a valid URL." };
+    }
+    return { ok: true, baseUrl: normalizeBaseUrl(u) };
+  }
+  return resolveOpenAiCompatibleBaseUrlForCatalogProvider(provider);
+}
+
+function resolveStoredBaseUrlForCatalogProvider(
+  provider: CatalogProviderSummary,
+  userBaseUrl: string,
+): { ok: true; baseUrl: string } | { ok: false; message: string } {
+  const requiresBase = provider.validation?.requiresBaseUrl === true;
+
+  if (isOpenAiCompatibleCatalogMode(provider)) {
+    return resolveOpenAiCompatibleBaseForCatalogAction(provider, userBaseUrl);
+  }
+
+  if (requiresBase) {
+    const u = userBaseUrl.trim();
+    if (!u) {
+      return { ok: false, message: "API base URL is required for this provider." };
+    }
+    const urlParse = z.string().url().safeParse(u);
+    if (!urlParse.success) {
+      return { ok: false, message: "API base URL must be a valid URL." };
+    }
+    return { ok: true, baseUrl: normalizeBaseUrl(u) };
+  }
+
+  const legacy = resolveCatalogNativeBaseUrl(provider.id);
+  if (legacy) return { ok: true, baseUrl: legacy };
+
+  const u = userBaseUrl.trim();
+  if (u) {
+    const urlParse = z.string().url().safeParse(u);
+    if (!urlParse.success) {
+      return { ok: false, message: "API base URL must be a valid URL." };
+    }
+    return { ok: true, baseUrl: normalizeBaseUrl(u) };
+  }
+
+  return {
+    ok: false,
+    message: "Cannot resolve API base URL for this native provider.",
+  };
+}
 
 export type ByokActionState = {
   error?: string;
@@ -171,14 +237,66 @@ export async function validateByokKeyAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid form." };
   }
 
-  const cid = parseCatalogProviderId(parsed.data.catalogProviderId);
-  const result = cid
-    ? await validateByokCatalogProvider(cid, parsed.data.apiKey, parsed.data.model)
-    : await validateOpenAiCompatibleChat(
-        normalizeBaseUrl(parsed.data.baseUrl),
-        parsed.data.apiKey,
-        parsed.data.model,
-      );
+  const catalogProviderId = parsed.data.catalogProviderId.trim();
+  if (!catalogProviderId) {
+    const model = parsed.data.model.trim();
+    const result = await validateOpenAiCompatibleChat(
+      normalizeBaseUrl(parsed.data.baseUrl),
+      parsed.data.apiKey,
+      model,
+    );
+    if (!result.ok) {
+      return { error: result.message };
+    }
+    return { success: "Key works. You can save it as a new provider entry." };
+  }
+
+  const catalogResult = await fetchRestormelKeysCatalog();
+  if (!catalogResult.ok) {
+    return {
+      error: `Catalog unavailable (${catalogResult.message}). Reload and try again.`,
+    };
+  }
+
+  const provider = findCatalogProviderById(catalogResult.catalog, catalogProviderId);
+  if (!provider) {
+    return {
+      error:
+        "Unknown catalog provider. Refresh the page and pick a provider from the current list.",
+    };
+  }
+
+  const model = normalizeModelForCatalogProvider(provider.id, parsed.data.model);
+  const requiresBase = provider.validation?.requiresBaseUrl === true;
+
+  if (requiresBase && !isOpenAiCompatibleCatalogMode(provider)) {
+    const u = parsed.data.baseUrl.trim();
+    if (!u) {
+      return { error: "API base URL is required for this provider." };
+    }
+    if (!z.string().url().safeParse(u).success) {
+      return { error: "API base URL must be a valid URL." };
+    }
+  }
+
+  let openAiCompatibleBaseUrl: string | null = null;
+  if (isOpenAiCompatibleCatalogMode(provider)) {
+    const resolved = resolveOpenAiCompatibleBaseForCatalogAction(
+      provider,
+      parsed.data.baseUrl,
+    );
+    if (!resolved.ok) {
+      return { error: resolved.message };
+    }
+    openAiCompatibleBaseUrl = resolved.baseUrl;
+  }
+
+  const result = await validateCatalogProviderKey(
+    provider,
+    parsed.data.apiKey,
+    model,
+    openAiCompatibleBaseUrl,
+  );
   if (!result.ok) {
     return { error: result.message };
   }
@@ -214,12 +332,40 @@ export async function addProviderKeyAction(
   }
 
   const db = getServerDb();
-  const cid = parseCatalogProviderId(parsed.data.catalogProviderId);
-  const catalogBase = cid ? resolveCatalogNativeBaseUrl(cid) : null;
-  if (cid && !catalogBase) {
-    return { error: "Unsupported catalog provider id." };
+  const catalogProviderId = parsed.data.catalogProviderId.trim();
+
+  let baseUrl: string;
+  let catalogIdForRow: string | null = null;
+
+  if (!catalogProviderId) {
+    baseUrl = normalizeBaseUrl(parsed.data.baseUrl);
+  } else {
+    const catalogResult = await fetchRestormelKeysCatalog();
+    if (!catalogResult.ok) {
+      return {
+        error: `Catalog unavailable (${catalogResult.message}). Reload and try again.`,
+      };
+    }
+    const provider = findCatalogProviderById(catalogResult.catalog, catalogProviderId);
+    if (!provider) {
+      return {
+        error:
+          "Unknown catalog provider. Refresh the page and pick a provider from the current list.",
+      };
+    }
+    catalogIdForRow = provider.id;
+    const resolved = resolveStoredBaseUrlForCatalogProvider(provider, parsed.data.baseUrl);
+    if (!resolved.ok) {
+      return { error: resolved.message };
+    }
+    baseUrl = resolved.baseUrl;
   }
-  const baseUrl = catalogBase ?? normalizeBaseUrl(parsed.data.baseUrl);
+
+  const model =
+    catalogIdForRow != null
+      ? normalizeModelForCatalogProvider(catalogIdForRow, parsed.data.model)
+      : parsed.data.model.trim();
+
   const stored = packApiKeyForStorage(keyTrim);
 
   if (parsed.data.isDefault) {
@@ -238,9 +384,9 @@ export async function addProviderKeyAction(
     userId: appUserId,
     label: parsed.data.label || null,
     providerName: parsed.data.providerName,
-    catalogProviderId: cid ?? null,
+    catalogProviderId: catalogIdForRow,
     baseUrl,
-    model: parsed.data.model,
+    model,
     apiKeyStored: stored,
     isDefault: parsed.data.isDefault,
     updatedAt: new Date(),

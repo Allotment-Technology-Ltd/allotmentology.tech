@@ -3,6 +3,7 @@ import "server-only";
 import { explainAnthropicModelNotFound } from "@/lib/ai/anthropic-model-hints";
 import type { ChatMessage } from "@/lib/ai/types";
 import { AiProviderError } from "@/lib/ai/errors";
+import { logAiProviderHttpFailure } from "@/lib/ai/log-provider-failure";
 
 import type { AiCompletionResult, AiProvider } from "./types";
 
@@ -82,7 +83,16 @@ export function createAnthropicNativeProvider(config: AnthropicNativeConfig): Ai
         if (res.status === 404) {
           detail += ` — ${explainAnthropicModelNotFound(params.model)}`;
         }
-        throw new AiProviderError(detail, res.status);
+        logAiProviderHttpFailure({
+          providerId: "anthropic-native",
+          status: res.status,
+          modelId: params.model,
+          endpointHost: "api.anthropic.com",
+        });
+        throw new AiProviderError(detail, res.status, {
+          providerId: "anthropic-native",
+          modelId: params.model,
+        });
       }
 
       const content = raw.content as { type?: string; text?: string }[] | undefined;

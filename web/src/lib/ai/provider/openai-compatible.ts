@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ChatMessage } from "@/lib/ai/types";
 import { AiProviderError } from "@/lib/ai/errors";
+import { logAiProviderHttpFailure } from "@/lib/ai/log-provider-failure";
 
 import type { AiCompletionResult, AiProvider } from "./types";
 
@@ -62,10 +63,22 @@ export function createOpenAiCompatibleProvider(
           typeof (raw.error as { message?: unknown }).message === "string"
             ? String((raw.error as { message: string }).message)
             : res.statusText;
-        throw new AiProviderError(
-          `AI provider error (${res.status}): ${errMsg}`,
-          res.status,
-        );
+        let endpointHost: string | undefined;
+        try {
+          endpointHost = new URL(base.startsWith("http") ? base : `https://${base}`).host;
+        } catch {
+          endpointHost = undefined;
+        }
+        logAiProviderHttpFailure({
+          providerId: "openai-compatible",
+          status: res.status,
+          modelId: params.model,
+          endpointHost,
+        });
+        throw new AiProviderError(`AI provider error (${res.status}): ${errMsg}`, res.status, {
+          providerId: "openai-compatible",
+          modelId: params.model,
+        });
       }
 
       const choice = (raw.choices as { message?: { content?: string } }[] | undefined)?.[0];

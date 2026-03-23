@@ -4,6 +4,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { userAiProviderKeys } from "@/db/schema/tables";
 import { readApiKeyFromStorage } from "@/lib/crypto/byok-secret";
+import { normalizeAnthropicCatalogModelId } from "@/lib/ai/anthropic-catalog-model-normalize";
 import { getServerDb } from "@/lib/db/server";
 
 import { createAnthropicNativeProvider } from "./anthropic-native";
@@ -65,7 +66,10 @@ export async function resolveAiModelForUser(
 
   const db = getServerDb();
   const rows = await db
-    .select({ model: userAiProviderKeys.model })
+    .select({
+      model: userAiProviderKeys.model,
+      catalogProviderId: userAiProviderKeys.catalogProviderId,
+    })
     .from(userAiProviderKeys)
     .where(
       and(
@@ -78,9 +82,14 @@ export async function resolveAiModelForUser(
       desc(userAiProviderKeys.updatedAt),
     );
 
-  const model = rows[0]?.model?.trim();
+  const row = rows[0];
+  const model = row?.model?.trim();
   if (!model) {
     return getDefaultAiModel();
+  }
+
+  if (row.catalogProviderId?.trim() === "anthropic") {
+    return normalizeAnthropicCatalogModelId(model);
   }
 
   return model;

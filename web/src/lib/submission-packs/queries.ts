@@ -11,9 +11,18 @@ import { getServerDb } from "@/lib/db/server";
 export async function loadSubmissionPacksIndex() {
   await getSessionUserEmailOrRedirect();
   const db = getServerDb();
+  /**
+   * Select only columns needed for the list. Avoid `select({ pack: submissionPacks })`, which
+   * requests every Drizzle column — if production is behind migrations (e.g. missing
+   * `application_forms_md`), the page would hard-crash with a DB error.
+   */
   return db
     .select({
-      pack: submissionPacks,
+      id: submissionPacks.id,
+      title: submissionPacks.title,
+      status: submissionPacks.status,
+      updatedAt: submissionPacks.updatedAt,
+      opportunityId: submissionPacks.opportunityId,
       opportunityTitle: opportunities.title,
       funderName: opportunities.funderName,
     })
@@ -24,6 +33,10 @@ export async function loadSubmissionPacksIndex() {
     )
     .orderBy(desc(submissionPacks.updatedAt));
 }
+
+export type SubmissionPackIndexRow = Awaited<
+  ReturnType<typeof loadSubmissionPacksIndex>
+>[number];
 
 export async function loadSubmissionPackDetail(packId: string) {
   await getSessionUserEmailOrRedirect();

@@ -45,11 +45,13 @@ export function ByokSettingsClient(props: {
     <div className="space-y-8">
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/30 p-4 text-sm text-zinc-400">
         <p>
-          Provider and model lists load from the Restormel Keys canonical catalog when available,
-          with a built-in fallback if the feed is down. Validate your key, then save. Revoke an
-          entry if a key is exposed; use{" "}
-          <strong className="font-medium text-zinc-300">Add new key</strong> to open a fresh form
-          for another provider.
+          You add <strong className="font-medium text-zinc-300">provider</strong>,{" "}
+          <strong className="font-medium text-zinc-300">model</strong>, and{" "}
+          <strong className="font-medium text-zinc-300">key</strong>; the app picks the right
+          endpoint and protocol for that choice. Restormel Keys supplies the live catalog when
+          reachable; otherwise the built-in list covers common OpenAI-compatible hosts. Validate,
+          then save. Revoke a key if it leaks; use{" "}
+          <strong className="font-medium text-zinc-300">Add new key</strong> for another provider.
         </p>
         {props.encryptsAtRest ? (
           <p className="mt-2 text-zinc-500">
@@ -71,6 +73,42 @@ export function ByokSettingsClient(props: {
             account.
           </p>
         ) : null}
+      </div>
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950/25 p-4 text-sm text-zinc-400">
+        <h2 className="text-base font-medium text-zinc-200">Catalog, presets, and fixing errors</h2>
+        <ul className="mt-2 list-inside list-disc space-y-1.5 text-zinc-500">
+          <li>
+            <strong className="font-medium text-zinc-400">Live catalog</strong> — Restormel Keys
+            serves the canonical provider/model list when the feed is healthy. The app filters out
+            retired or unavailable models before building pickers.
+          </li>
+          <li>
+            <strong className="font-medium text-zinc-400">Degraded / fallback</strong> — If you see an
+            amber banner, the app is using a built-in preset list. You can still add keys; prefer
+            validating before save. When the feed recovers, refresh this page for the full catalog.
+          </li>
+          <li>
+            <strong className="font-medium text-zinc-400">401 / 403</strong> — Usually wrong host or
+            key for the vendor (e.g. DeepSeek key needs DeepSeek base URL and model id). Same for
+            every AI surface:{" "}
+            <strong className="font-medium text-zinc-400">Mitchell</strong>, collateral, and
+            submission packs all use your <strong className="font-medium text-zinc-400">default</strong>{" "}
+            BYOK row (or server env AI when no key). One bad default key affects all of them — revoke
+            it here to fall back.
+          </li>
+          <li>
+            <strong className="font-medium text-zinc-400">404 on a model</strong> — Often a retired
+            model id; pick a current id from the catalog or vendor docs, then re-save.
+          </li>
+          <li>
+            <strong className="font-medium text-zinc-400">Packages</strong> — From{" "}
+            <code className="rounded bg-zinc-800 px-1">web/</code>, run{" "}
+            <code className="rounded bg-zinc-800 px-1">npm run restormel:patch</code> after upgrading{" "}
+            <code className="rounded bg-zinc-800 px-1">@restormel/keys</code> so the catalog client
+            stays aligned (see DEPLOYMENT.md).
+          </li>
+        </ul>
       </div>
 
       <section className="space-y-3">
@@ -95,7 +133,10 @@ export function ByokSettingsClient(props: {
                       ) : null}
                     </p>
                     <p className="mt-1 text-xs text-zinc-500">{k.providerName}</p>
-                    <p className="mt-1 break-all text-zinc-400">{k.baseUrl}</p>
+                    <p className="mt-1 break-all text-zinc-400">
+                      <span className="text-zinc-500">Endpoint </span>
+                      {k.baseUrl}
+                    </p>
                     <p className="mt-1 text-zinc-300">
                       Model: <code className="rounded bg-zinc-800 px-1">{k.model}</code>
                     </p>

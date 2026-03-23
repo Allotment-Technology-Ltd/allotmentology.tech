@@ -22,6 +22,11 @@ export default function AppError({
       {error.digest ? (
         <p className="mt-2 font-mono text-[10px] text-red-300/40">Ref: {error.digest}</p>
       ) : null}
+      <p className="mt-3 text-xs leading-relaxed text-red-200/55">
+        If this persists after retry, the database may be behind the app version (run migrations for
+        this environment) or a server error was logged. In production, search Vercel function logs for
+        the Ref above.
+      </p>
       <button
         type="button"
         onClick={() => reset()}

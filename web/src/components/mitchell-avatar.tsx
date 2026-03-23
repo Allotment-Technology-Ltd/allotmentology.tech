@@ -9,7 +9,7 @@ type Props = {
 };
 
 /**
- * Mitchell — grant intake lead. Avatar art: bald, East London straight-talker, heart of gold.
+ * Mitchell — in-app grant writer (intake + section drafts). Avatar: East London straight-talker, heart of gold.
  */
 export function MitchellAvatar({ className = "", size = 48 }: Props) {
   const s = Math.min(96, Math.max(24, size));

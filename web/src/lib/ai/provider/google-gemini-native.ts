@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ChatMessage } from "@/lib/ai/types";
 import { AiProviderError } from "@/lib/ai/errors";
+import { logAiProviderHttpFailure } from "@/lib/ai/log-provider-failure";
 
 import type { AiCompletionResult, AiProvider } from "./types";
 
@@ -54,7 +55,10 @@ export function createGoogleGeminiNativeProvider(
 
       const { systemInstruction, contents } = toGeminiContents(params.messages);
       if (contents.length === 0) {
-        throw new AiProviderError("Gemini requires at least one user/assistant message.", 400);
+        throw new AiProviderError("Gemini requires at least one user/assistant message.", 400, {
+          providerId: "google-gemini-native",
+          modelId: params.model,
+        });
       }
 
       const generationConfig: Record<string, unknown> = {};
@@ -94,10 +98,16 @@ export function createGoogleGeminiNativeProvider(
           typeof (raw.error as { message?: unknown }).message === "string"
             ? String((raw.error as { message: string }).message)
             : res.statusText;
-        throw new AiProviderError(
-          `Gemini error (${res.status}): ${errMsg}`,
-          res.status,
-        );
+        logAiProviderHttpFailure({
+          providerId: "google-gemini-native",
+          status: res.status,
+          modelId: params.model,
+          endpointHost: "generativelanguage.googleapis.com",
+        });
+        throw new AiProviderError(`Gemini error (${res.status}): ${errMsg}`, res.status, {
+          providerId: "google-gemini-native",
+          modelId: params.model,
+        });
       }
 
       const candidates = raw.candidates as

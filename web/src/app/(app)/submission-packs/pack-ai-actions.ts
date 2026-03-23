@@ -12,6 +12,8 @@ import {
   writingStyleSamples,
 } from "@/db/schema/tables";
 import { AiNotConfiguredError, AiParseError, AiProviderError } from "@/lib/ai/errors";
+import { logAiProviderErrorForRoute } from "@/lib/ai/log-provider-failure";
+import { augmentProviderErrorMessage } from "@/lib/ai/provider-error-hints";
 import {
   getAppUserIdByEmail,
   getSessionUserEmailOrRedirect,
@@ -45,10 +47,20 @@ export async function generatePackDraftAi(packId: string): Promise<PackDraftAiRe
     }
 
     const db = getServerDb();
+    /**
+     * Only columns needed for drafting — avoids SELECT * failures when the DB is behind
+     * migrations that add columns to `submission_packs` or `opportunities`.
+     */
     const [row] = await db
       .select({
-        pack: submissionPacks,
-        opportunity: opportunities,
+        workingThesis: submissionPacks.workingThesis,
+        projectFraming: submissionPacks.projectFraming,
+        summary100: submissionPacks.summary100,
+        summary250: submissionPacks.summary250,
+        opportunityId: opportunities.id,
+        opportunityTitle: opportunities.title,
+        eligibilityNotes: opportunities.eligibilityNotes,
+        ownerUserId: opportunities.ownerUserId,
       })
       .from(submissionPacks)
       .innerJoin(
@@ -76,10 +88,10 @@ export async function generatePackDraftAi(packId: string): Promise<PackDraftAiRe
         knowledgeAssets,
         eq(opportunityKnowledgeAssets.knowledgeAssetId, knowledgeAssets.id),
       )
-      .where(eq(opportunityKnowledgeAssets.opportunityId, row.opportunity.id));
+      .where(eq(opportunityKnowledgeAssets.opportunityId, row.opportunityId));
 
     const [styleProfile] =
-      row.opportunity.ownerUserId == null
+      row.ownerUserId == null
         ? []
         : await db
             .select({
@@ -90,7 +102,7 @@ export async function generatePackDraftAi(packId: string): Promise<PackDraftAiRe
               preferredStructure: writingStyleProfiles.preferredStructure,
             })
             .from(writingStyleProfiles)
-            .where(eq(writingStyleProfiles.ownerUserId, row.opportunity.ownerUserId))
+            .where(eq(writingStyleProfiles.ownerUserId, row.ownerUserId))
             .limit(1);
 
     const styleSamples = styleProfile
@@ -107,7 +119,7 @@ export async function generatePackDraftAi(packId: string): Promise<PackDraftAiRe
     const userId = await getAppUserIdByEmail(email);
     const ctx = await tryCreateFundingOpsAiContext({
       userId,
-      opportunityId: row.opportunity.id,
+      opportunityId: row.opportunityId,
     });
     if (!ctx) {
       return {
@@ -118,22 +130,22 @@ export async function generatePackDraftAi(packId: string): Promise<PackDraftAiRe
     }
 
     const snippets: Record<string, string> = {};
-    if (row.pack.workingThesis.trim()) {
-      snippets.working_thesis = row.pack.workingThesis;
+    if (row.workingThesis.trim()) {
+      snippets.working_thesis = row.workingThesis;
     }
-    if (row.pack.projectFraming.trim()) {
-      snippets.project_framing = row.pack.projectFraming;
+    if (row.projectFraming.trim()) {
+      snippets.project_framing = row.projectFraming;
     }
-    if (row.pack.summary100.trim()) {
-      snippets.summary_100 = row.pack.summary100;
+    if (row.summary100.trim()) {
+      snippets.summary_100 = row.summary100;
     }
-    if (row.pack.summary250.trim()) {
-      snippets.summary_250 = row.pack.summary250;
+    if (row.summary250.trim()) {
+      snippets.summary_250 = row.summary250;
     }
 
     const gen = await generateApplicationPack(ctx, {
-      opportunityTitle: row.opportunity.title,
-      eligibilityNotes: row.opportunity.eligibilityNotes ?? undefined,
+      opportunityTitle: row.opportunityTitle,
+      eligibilityNotes: row.eligibilityNotes ?? undefined,
       collateralSnippets:
         Object.keys(snippets).length > 0 ? snippets : undefined,
       knowledgeLinks: linkedKnowledge,
@@ -150,7 +162,7 @@ export async function generatePackDraftAi(packId: string): Promise<PackDraftAiRe
 
     const draftLoop = await runApplicationDrafter(ctx, {
       brief: [
-        `Opportunity: ${row.opportunity.title}`,
+        `Opportunity: ${row.opportunityTitle}`,
         `Use these draft fragments as base material and tighten to founder-style voice.`,
         JSON.stringify(gen.value.packFragments, null, 2),
       ].join("\n\n"),
@@ -208,7 +220,8 @@ export async function generatePackDraftAi(packId: string): Promise<PackDraftAiRe
       return { ok: false, error: `Could not parse AI output: ${e.message}` };
     }
     if (e instanceof AiProviderError) {
-      return { ok: false, error: e.message };
+      logAiProviderErrorForRoute("submissionPacks.generatePackDraftAi", e);
+      return { ok: false, error: augmentProviderErrorMessage(e.message, e.status) };
     }
     return {
       ok: false,

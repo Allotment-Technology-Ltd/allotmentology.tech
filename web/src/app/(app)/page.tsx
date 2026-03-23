@@ -53,6 +53,28 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950/35 px-4 py-4 text-sm text-zinc-400">
+        <p className="font-medium text-zinc-200">AI in this workspace</p>
+        <p className="mt-1 leading-relaxed">
+          <strong className="font-medium text-zinc-300">Mitchell</strong> is the grant writer:
+          intake (angle, risks, scaffold pointers) and section drafts built for assessors — on
+          each{" "}
+          <Link href="/opportunities" className="text-sky-400 underline-offset-2 hover:text-sky-300 hover:underline">
+            opportunity
+          </Link>
+          . <strong className="font-medium text-zinc-300">Collateral</strong> has Improve / Expand /
+          Shorten; <strong className="font-medium text-zinc-300">submission packs</strong> have the
+          drafting agent. All use your key from{" "}
+          <Link
+            href="/settings/restormel-keys"
+            className="text-sky-400 underline-offset-2 hover:text-sky-300 hover:underline"
+          >
+            BYOK &amp; AI keys
+          </Link>
+          .
+        </p>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
         {shortcuts.map((s) => (
           <Link

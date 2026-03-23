@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -23,6 +23,9 @@ const label = "mb-1 block text-xs font-medium text-zinc-500";
 const empty: ByokActionState = {};
 
 const defaultPreset = BYOK_PROVIDER_PRESETS[0]!;
+
+/** Survives soft navigations; keyed by catalog contract version. */
+const BYOK_CATALOG_DRAFT_KEY = "allotment.byok.catalogDraft.v1";
 
 export function ByokAddProviderForm(props: {
   catalog: ByokCatalogClientPayload | null;
@@ -89,14 +92,29 @@ function CatalogAddProviderSection(props: {
     return list[0]?.providerModelId ?? "";
   });
 
+  const modelIdInCatalogList = useMemo(
+    () => modelsForProvider.some((m) => m.providerModelId === modelId),
+    [modelsForProvider, modelId],
+  );
+
+  /** Prefer the model row’s `catalogProviderId` so POST matches variant `providerType` (fixes draft/orphan desync). */
+  const catalogRowForModel = useMemo(
+    () => props.catalog.models.find((m) => m.providerModelId === modelId),
+    [props.catalog.models, modelId],
+  );
+
+  const effectiveCatalogProviderId =
+    catalogRowForModel?.catalogProviderId ?? providerId;
+
   const [apiKey, setApiKey] = useState("");
   const [isDefault, setIsDefault] = useState(false);
 
   const providerDisplayName = useMemo(() => {
     return (
-      props.catalog.providers.find((p) => p.id === providerId)?.displayName ?? providerId
+      props.catalog.providers.find((p) => p.id === effectiveCatalogProviderId)
+        ?.displayName ?? effectiveCatalogProviderId
     );
-  }, [props.catalog.providers, providerId]);
+  }, [props.catalog.providers, effectiveCatalogProviderId]);
 
   const [validateState, validateAction, validatePending] = useActionState(
     validateByokKeyAction,
@@ -107,9 +125,66 @@ function CatalogAddProviderSection(props: {
     empty,
   );
 
+  const restoredDraftRef = useRef(false);
+
+  useEffect(() => {
+    if (restoredDraftRef.current) return;
+    try {
+      const raw = sessionStorage.getItem(BYOK_CATALOG_DRAFT_KEY);
+      if (!raw) {
+        return;
+      }
+      const d = JSON.parse(raw) as {
+        contractVersion?: string;
+        providerId?: string;
+        modelId?: string;
+      };
+      if (d.contractVersion !== props.catalog.contractVersion) {
+        return;
+      }
+      if (d.providerId && props.catalog.providers.some((p) => p.id === d.providerId)) {
+        setProviderId(d.providerId);
+      }
+      if (d.modelId && typeof d.modelId === "string") {
+        setModelId(d.modelId);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      restoredDraftRef.current = true;
+    }
+  }, [props.catalog.contractVersion, props.catalog.providers, props.catalog.models]);
+
+  useEffect(() => {
+    const row = props.catalog.models.find((m) => m.providerModelId === modelId);
+    if (row && row.catalogProviderId !== providerId) {
+      setProviderId(row.catalogProviderId);
+    }
+  }, [modelId, props.catalog.models, providerId]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        BYOK_CATALOG_DRAFT_KEY,
+        JSON.stringify({
+          contractVersion: props.catalog.contractVersion,
+          providerId,
+          modelId,
+        }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [props.catalog.contractVersion, providerId, modelId]);
+
   useEffect(() => {
     if (!addState.success) return;
     queueMicrotask(() => {
+      try {
+        sessionStorage.removeItem(BYOK_CATALOG_DRAFT_KEY);
+      } catch {
+        /* ignore */
+      }
       setApiKey("");
       setIsDefault(false);
       router.refresh();
@@ -122,17 +197,22 @@ function CatalogAddProviderSection(props: {
     setModelId(list[0]?.providerModelId ?? "");
   }
 
+  function onModelChange(id: string) {
+    setModelId(id);
+    const row = props.catalog.models.find((m) => m.providerModelId === id);
+    if (row) setProviderId(row.catalogProviderId);
+  }
+
   return (
     <section className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-950/30 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-medium text-zinc-100">Add provider</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            Provider and model lists are loaded from the Restormel Keys canonical catalog (
-            <code className="rounded bg-zinc-800 px-1">/keys/dashboard/api/catalog</code>
-            ). Native OpenAI, Anthropic, and Google models use each vendor&apos;s API; validate uses
-            the matching protocol for the provider you pick. If Anthropic returns 404, the model id is
-            usually retired — pick a current id from Anthropic&apos;s model docs and re-save your key.
+            Lists come from the Restormel Keys catalog. You only pick provider, model, and paste your
+            key; routing to the correct API is automatic. If validation fails, the model id may be
+            retired (for example Anthropic 404) — choose a current id from the list or vendor docs,
+            then save again.
           </p>
         </div>
         <button
@@ -145,10 +225,12 @@ function CatalogAddProviderSection(props: {
       </div>
 
       <form className="space-y-4">
-        <input type="hidden" name="catalogProviderId" value={providerId} />
+        <input type="hidden" name="catalogProviderId" value={effectiveCatalogProviderId} />
         <input type="hidden" name="providerName" value={providerDisplayName} />
         <input type="hidden" name="baseUrl" value="" />
         <input type="hidden" name="isDefault" value={isDefault ? "on" : ""} />
+        {/* Single source of truth for POST body — avoids browser select/value drift */}
+        <input type="hidden" name="model" value={modelId} />
 
         <div>
           <label className={label} htmlFor="byok-catalog-provider">
@@ -175,20 +257,35 @@ function CatalogAddProviderSection(props: {
           {modelsForProvider.length === 0 ? (
             <p className="text-sm text-red-400">No models listed for this provider.</p>
           ) : (
-            <select
-              id="byok-catalog-model"
-              name="model"
-              required
-              className={input}
-              value={modelId}
-              onChange={(e) => setModelId(e.target.value)}
-            >
-              {modelsForProvider.map((m) => (
-                <option key={m.catalogModelKey} value={m.providerModelId}>
-                  {m.label} ({m.providerModelId})
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                id="byok-catalog-model"
+                required
+                className={input}
+                value={modelId}
+                onChange={(e) => onModelChange(e.target.value)}
+                aria-label="Model"
+              >
+                {modelsForProvider.map((m) => (
+                  <option key={m.catalogModelKey} value={m.providerModelId}>
+                    {m.label} ({m.providerModelId})
+                  </option>
+                ))}
+                {modelId && !modelIdInCatalogList ? (
+                  <option value={modelId}>
+                    {modelId} (your selection — not in the list after last refresh; pick another
+                    id or retry)
+                  </option>
+                ) : null}
+              </select>
+              {modelId && !modelIdInCatalogList ? (
+                <p className="mt-1 text-xs text-amber-200/80">
+                  The catalog refreshed and this model id is no longer in the picker. Your choice
+                  is kept so it doesn’t jump to another model. Pick a current id from the list
+                  above or from Anthropic’s docs.
+                </p>
+              ) : null}
+            </>
           )}
         </div>
 
@@ -240,7 +337,11 @@ function CatalogAddProviderSection(props: {
           <button
             type="submit"
             formAction={validateAction}
-            disabled={validatePending || modelsForProvider.length === 0}
+            disabled={
+              validatePending ||
+              !modelId.trim() ||
+              (modelsForProvider.length === 0 && modelIdInCatalogList)
+            }
             className="rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 hover:bg-zinc-700 disabled:opacity-50"
           >
             {validatePending ? "Validating…" : "Validate key"}
@@ -248,7 +349,11 @@ function CatalogAddProviderSection(props: {
           <button
             type="submit"
             formAction={addAction}
-            disabled={addPending || modelsForProvider.length === 0}
+            disabled={
+              addPending ||
+              !modelId.trim() ||
+              (modelsForProvider.length === 0 && modelIdInCatalogList)
+            }
             className="rounded-md bg-zinc-100 px-3 py-1.5 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
           >
             {addPending ? "Saving…" : "Save provider"}
@@ -322,8 +427,9 @@ function PresetAddProviderSection(props: { onAddNewKey: () => void }) {
         </button>
       </div>
       <p className="text-xs text-zinc-500">
-        Built-in list for OpenAI-compatible gateways (POST …/chat/completions) and common hosts.
-        Prefer the Restormel catalog when online for native OpenAI, Anthropic, and Google.
+        Fallback while the Restormel catalog is unavailable: same idea — choose provider, model, and
+        key. Fixed presets fill in the API base for you; Azure, local, and custom only add a base URL
+        because it is account-specific.
       </p>
 
       <PresetAddProviderFieldsForm
@@ -395,12 +501,16 @@ function PresetAddProviderFieldsForm(props: {
   } = props;
 
   const modelOptions = preset.models;
+  const modelIdInPresetList = modelOptions.some((m) => m.id === modelId);
 
   return (
     <form className="space-y-4">
       <input type="hidden" name="catalogProviderId" value="" />
       <input type="hidden" name="providerName" value={preset.providerName} />
       <input type="hidden" name="isDefault" value={isDefault ? "on" : ""} />
+      {modelOptions.length > 0 ? (
+        <input type="hidden" name="model" value={modelId} />
+      ) : null}
 
       <div>
         <label className={label} htmlFor="byok-provider-preset">
@@ -447,18 +557,29 @@ function PresetAddProviderFieldsForm(props: {
           </label>
           <select
             id="byok-model-select"
-            name="model"
             required
             className={input}
             value={modelId}
             onChange={(e) => onModelIdChange(e.target.value)}
+            aria-label="Model"
           >
             {modelOptions.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.label} ({m.id})
               </option>
             ))}
+            {modelId && !modelIdInPresetList ? (
+              <option value={modelId}>
+                {modelId} (your selection — not in preset list after refresh)
+              </option>
+            ) : null}
           </select>
+          {modelId && !modelIdInPresetList ? (
+            <p className="mt-1 text-xs text-amber-200/80">
+              Picker list changed; your model id is kept so it doesn’t jump. Choose a listed id or
+              enter a custom deployment where offered.
+            </p>
+          ) : null}
         </div>
       ) : (
         <div>

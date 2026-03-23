@@ -51,9 +51,11 @@ npm install
 npm run db:migrate
 ```
 
-**Migrations on disk:** `web/drizzle/0000_init.sql` through `0008_user_ai_provider_keys.sql` (applied in order via Drizzle).
+**Migrations on disk:** `web/drizzle/*.sql` in journal order (see `web/drizzle/meta/_journal.json`). Applied via Drizzle Kit.
 
 **When to re-run:** After every `git pull` that adds a new file under `web/drizzle/*.sql`, run `npm run db:migrate` against each environment (local, Neon preview branch, production) that should match the new schema.
+
+**Release gate:** Production and preview deploys should use **`npm run vercel-build`** (migrations then `next build`) so a failed migration **blocks** the deploy. Do not ship app code that expects columns your database does not have. If you cannot run migrate in CI, run `npm run db:migrate` manually against that environment **before** or immediately after merge.
 
 **Optional seed (demo data only):**
 
@@ -96,7 +98,16 @@ npm run db:seed
 
 If unset, the app runs; AI server actions return a clear “not configured” message. If a user saves BYOK in the UI, that configuration takes precedence over shared environment variables for that user’s AI calls.
 
-**BYOK provider/model catalog:** The Settings UI loads the canonical Restormel Keys catalog from `GET /keys/dashboard/api/catalog` (default origin `https://restormel.dev` unless overridden). Set `RESTORMEL_KEYS_CATALOG_URL` in `web/.env` / Vercel if you need a different origin. The app tries `@restormel/keys` helpers `fetchCanonicalCatalog` / `fetchCanonicalCatalogWithFallback` when those exports exist in the installed version, then falls back to a direct HTTP fetch. After upgrading `@restormel/keys` / `@restormel/keys-cli`, run **`npm run restormel:patch`** from `web/` (or `npx @restormel/keys-cli patch`) to bump dependencies and run the catalog connectivity check; the app still works via direct catalog fetch if the SDK helpers are absent.
+**BYOK provider/model catalog (split of responsibilities):**
+
+- **Restormel Keys** owns catalog contract, patch path, and (in the SDK) helpers such as `fetchCanonicalCatalogWithFallback` and, when published, `filterCanonicalCatalogForViability`.
+- **Allotment** owns wiring: server-side fetch via `fetchCanonicalCatalogWithFallback` (with `RESTORMEL_KEYS_BASE` / `RESTORMEL_KEYS_CATALOG_URL` as needed), then **`filterCanonicalCatalogForViability`** in `web/src/lib/restormel-keys/catalog.ts` (uses the Restormel export when present, then applies local lifecycle/denylist/availability gating before BYOK pickers). Never call the catalog from the browser.
+- **Ops:** do not log raw API keys; log provider id, model id, HTTP status, and route name only. Run **`npm run db:migrate`** (or your deploy pipeline’s migrate step) on every deploy independently of Restormel package bumps.
+- **BYOK vs catalog:** each `providers[]` row should include `validation` (`mode`, `requiresBaseUrl`). For OpenAI-compatible clients when `requiresBaseUrl === false`, use **`validation.defaultApiBaseUrl`** (Restormel Keys `@restormel/keys` ≥0.2.7). If `requiresBaseUrl === true`, collect the base URL in your app. Allotment resolves keys and storage from the catalog row, not a hardcoded provider id list.
+
+The Settings UI loads the canonical catalog from `GET /keys/dashboard/api/catalog` (default origin `https://restormel.dev` unless overridden). Set `RESTORMEL_KEYS_CATALOG_URL` in `web/.env` / Vercel if you need a different origin.
+
+**Upgrading Restormel packages:** Target **`@restormel/keys@^0.2.7`** and **`@restormel/keys-cli@^0.1.4`**; after version bumps run **`npm run restormel:patch`** from `web/` (runs `npx @restormel/keys-cli@0.1.4 patch`) so dependencies and catalog checks stay aligned. Verify with `npm view @restormel/keys version` and `npm view @restormel/keys-cli version`.
 
 ### Knowledge base and writing style setup
 
@@ -130,14 +141,13 @@ Open `http://localhost:3000`. Unauthenticated users are redirected to `/auth/sig
    - `DATABASE_URL` — use Neon’s **Vercel integration** if available (recommended), or paste the connection string.
    - `NEON_AUTH_BASE_URL` — same as local.
 
-5. **Build command:** `npm run build` (default when root is `web`).
+5. **Build command (recommended):** `npm run vercel-build` — runs `npm run db:migrate` then `npm run build` so production/preview databases stay in sync with the code **when `DATABASE_URL` is set in Vercel**. The default `npm run build` does **not** migrate (used by CI without a database).
 6. **Install command:** `npm install` (default).
 
 ### Migrations against production
 
-Vercel’s build does **not** run migrations unless you add a step. Recommended for a small team:
-
-- After merging schema changes, run locally (or in a trusted CI job with secrets):
+- **Preferred:** Set Vercel **Build Command** to `npm run vercel-build` (root directory `web`). Deploys fail fast if a migration cannot apply (DDL rights, bad URL).
+- **Alternative:** Keep build as `npm run build` and run migrations manually (or in CI) after merges:
 
   ```bash
   cd web
@@ -145,7 +155,20 @@ Vercel’s build does **not** run migrations unless you add a step. Recommended 
   npm run db:migrate
   ```
 
-- Alternatively, add a custom **Build Command** in Vercel: `npm run db:migrate && npm run build` (only if you accept deploy failure when migrations fail).
+### Health check
+
+After deploy, `GET /api/health` returns `{ "ok": true, "database": "connected" }` when Postgres is reachable. Use for smoke tests or uptime checks (no auth).
+
+### Post-deploy smoke (recommended)
+
+From `web/` with the deployed base URL (or local):
+
+```bash
+export SMOKE_BASE_URL="https://your-production-host"
+npm run smoke:deploy
+```
+
+Then manually: sign in → **Settings → BYOK & AI keys** (catalog loads) → open **Submission packs** or **Opportunities** (DB-heavy list). AI paths share the same default BYOK key as Mitchell, collateral, and packs — see the BYOK page for degradation vs presets.
 
 ### Neon ↔ Vercel integration
 
@@ -157,7 +180,7 @@ In Neon, connect the Vercel project so preview deployments can receive **branch-
 
 This repo includes `.github/workflows/ci.yml`: on push/PR it runs `npm ci`, `npm run lint`, and `npm run build` in **`web/`** with a placeholder `NEON_AUTH_BASE_URL` so the Next.js build can compile.
 
-**Secrets:** No `DATABASE_URL` in CI is required for that workflow. If you later add migration checks in CI, add a `DATABASE_URL` secret and a dedicated job.
+**Secrets:** No `DATABASE_URL` in CI is required for that workflow (`npm run build` only). Production deploys should use `npm run vercel-build` in Vercel so migrations run against the real database.
 
 ---
 

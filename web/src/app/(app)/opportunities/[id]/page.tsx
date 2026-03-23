@@ -198,8 +198,8 @@ export default async function OpportunityDetailPage({
           <h2 className={sectionTitle}>Mitchell</h2>
         </div>
         <p className="text-sm text-zinc-500">
-          Grant intake lead — fetches the call page, fills what we can, scores the
-          opportunity, and tells you straight what he still needs. Re-run from{" "}
+          Grant writer intake — fetches the call, scores the fit, and writes a brief with
+          a winning angle, assessor risks, and scaffold-level pointers. Re-run from{" "}
           <Link href={`/opportunities/${id}/edit`} className="text-sky-400 hover:underline">
             Edit
           </Link>{" "}
@@ -223,8 +223,7 @@ export default async function OpportunityDetailPage({
           <h2 className={sectionTitle}>Section draft</h2>
         </div>
         <p className="text-sm text-zinc-500">
-          First-pass copy with placeholders, plus what Mitchell needs to fill them —
-          generate from{" "}
+          First-pass copy with win themes, QC, and placeholders — generate from{" "}
           <Link href={`/opportunities/${id}/edit#mitchell-draft`} className="text-sky-400 hover:underline">
             Edit → Mitchell — draft a section
           </Link>
@@ -241,7 +240,7 @@ export default async function OpportunityDetailPage({
             {o.mitchellSectionFollowupMd?.trim() ? (
               <div className="rounded-md border border-amber-900/40 bg-amber-950/20 p-4 text-sm text-zinc-200">
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-200/80">
-                  Blanks and materials
+                  Win themes, QC, blanks &amp; materials
                 </p>
                 <MarkdownPreview markdown={o.mitchellSectionFollowupMd} />
               </div>

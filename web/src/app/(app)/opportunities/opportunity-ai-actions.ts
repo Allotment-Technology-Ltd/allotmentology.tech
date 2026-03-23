@@ -12,6 +12,8 @@ import {
   opportunityScores,
 } from "@/db/schema/tables";
 import { AiNotConfiguredError, AiParseError, AiProviderError } from "@/lib/ai/errors";
+import { logAiProviderErrorForRoute } from "@/lib/ai/log-provider-failure";
+import { augmentProviderErrorMessage } from "@/lib/ai/provider-error-hints";
 import {
   getAppUserIdByEmail,
   getSessionUserEmailOrRedirect,
@@ -107,7 +109,8 @@ function handleAiError(e: unknown): { ok: false; error: string } {
     return { ok: false, error: `Could not parse AI output: ${e.message}` };
   }
   if (e instanceof AiProviderError) {
-    return { ok: false, error: e.message };
+    logAiProviderErrorForRoute("opportunity.ai", e);
+    return { ok: false, error: augmentProviderErrorMessage(e.message, e.status) };
   }
   return {
     ok: false,

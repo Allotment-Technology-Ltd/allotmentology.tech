@@ -7,6 +7,8 @@ import {
   NON_GENERIC_WRITING_GUARDRAILS,
 } from "@/lib/ai/constitution";
 import { AiNotConfiguredError, AiProviderError } from "@/lib/ai/errors";
+import { logAiProviderErrorForRoute } from "@/lib/ai/log-provider-failure";
+import { augmentProviderErrorMessage } from "@/lib/ai/provider-error-hints";
 import { insertAiGenerationLog } from "@/lib/ai/logging";
 import { chatMessages } from "@/lib/ai/provider/openai-compatible";
 import { tryCreateFundingOpsAiContext } from "@/lib/ai/runtime";
@@ -47,7 +49,10 @@ function handleAiError(e: unknown): CollateralAiFormState {
     return { error: e.message };
   }
   if (e instanceof AiProviderError) {
-    return { error: e.message };
+    logAiProviderErrorForRoute("collateral.runCollateralWritingAid", e);
+    return {
+      error: augmentProviderErrorMessage(e.message, e.status),
+    };
   }
   const msg = e instanceof Error ? e.message : "AI request failed.";
   return { error: msg };

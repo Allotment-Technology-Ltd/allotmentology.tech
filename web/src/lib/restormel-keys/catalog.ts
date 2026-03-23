@@ -1,8 +1,11 @@
 import "server-only";
 
+import * as RestormelDashboard from "@restormel/keys/dashboard";
 import { fetchCanonicalCatalogWithFallback } from "@restormel/keys/dashboard";
 import { z } from "zod";
 
+import { normalizeAnthropicCatalogModelId } from "@/lib/ai/anthropic-catalog-model-normalize";
+import { resolveCatalogNativeBaseUrl } from "@/lib/ai/provider/catalog-native-bases";
 import { CATALOG_PROVIDER_MODEL_DENYLIST } from "@/lib/restormel-keys/catalog-denylist";
 import { buildLocalFallbackCatalog } from "@/lib/restormel-keys/catalog-fallback";
 
@@ -30,11 +33,15 @@ const catalogProviderSummarySchema = z.object({
   id: z.string(),
   displayName: z.string(),
   modelCount: z.number().optional(),
+  /** @deprecated Prefer `validation.defaultApiBaseUrl` (Restormel Keys ≥0.2.7). Kept for older feeds. */
+  defaultApiBaseUrl: z.string().optional(),
   validation: z
     .object({
       mode: z.string(),
       requiresBaseUrl: z.boolean().optional(),
       requiresModel: z.boolean().optional(),
+      /** When `mode === "openai_compatible"` and `requiresBaseUrl === false`, public chat-completions base. */
+      defaultApiBaseUrl: z.string().optional(),
     })
     .optional(),
 });
@@ -55,6 +62,9 @@ export const restormelKeysCatalogSchema = z.object({
 });
 
 export type RestormelKeysCatalog = z.infer<typeof restormelKeysCatalogSchema>;
+
+/** One row from `catalog.providers[]` (BYOK routing + validation). */
+export type CatalogProviderSummary = RestormelKeysCatalog["providers"][number];
 
 /** Serializable to the BYOK client. */
 export type ByokCatalogClientPayload = {
@@ -108,11 +118,29 @@ function isVariantSelectable(
 }
 
 /**
- * Apply viability gating: GA lifecycle, variant availability === available, denylist.
+ * Apply viability gating: lifecycle, variant availability, denylist (defense in depth vs stale cache / fallback).
+ * When `@restormel/keys` exports `filterCanonicalCatalogForViability`, that runs first; otherwise local rules apply.
  */
-export function filterCatalogForByokUi(
+export function filterCanonicalCatalogForViability(
   catalog: RestormelKeysCatalog,
 ): RestormelKeysCatalog {
+  const external = (
+    RestormelDashboard as unknown as {
+      filterCanonicalCatalogForViability?: (
+        c: RestormelKeysCatalog,
+      ) => RestormelKeysCatalog;
+    }
+  ).filterCanonicalCatalogForViability;
+  const afterRestormel =
+    typeof external === "function" ? external(catalog) : catalog;
+  /** Always apply local denylist / lifecycle / availability (defense in depth vs stale cache or partial SDK filter). */
+  return filterCatalogForByokUiLocal(afterRestormel);
+}
+
+/** @deprecated Use {@link filterCanonicalCatalogForViability} */
+export const filterCatalogForByokUi = filterCanonicalCatalogForViability;
+
+function filterCatalogForByokUiLocal(catalog: RestormelKeysCatalog): RestormelKeysCatalog {
   const data = catalog.data
     .filter((m) => isModelLifecycleSelectable(m.lifecycleState))
     .map((m) => ({
@@ -127,7 +155,7 @@ export function filterCatalogForByokUi(
 }
 
 function buildClientPayload(catalog: RestormelKeysCatalog): ByokCatalogClientPayload {
-  const gated = filterCatalogForByokUi(catalog);
+  const gated = filterCanonicalCatalogForViability(catalog);
   const providers = gated.providers.map((p) => ({
     id: p.id,
     displayName: p.displayName,
@@ -136,9 +164,13 @@ function buildClientPayload(catalog: RestormelKeysCatalog): ByokCatalogClientPay
   const models: ByokCatalogClientPayload["models"] = [];
   for (const m of gated.data) {
     for (const v of m.variants) {
+      const providerModelId =
+        v.providerType === "anthropic"
+          ? normalizeAnthropicCatalogModelId(v.providerModelId)
+          : v.providerModelId;
       models.push({
         catalogProviderId: v.providerType,
-        providerModelId: v.providerModelId,
+        providerModelId,
         label: m.canonicalName,
         catalogModelKey: `${m.id}::${v.id}`,
       });
@@ -253,4 +285,38 @@ export async function fetchRestormelKeysCatalog(): Promise<CatalogFetchResult> {
       degradedReason: msg,
     };
   }
+}
+
+export function findCatalogProviderById(
+  catalog: RestormelKeysCatalog,
+  id: string,
+): CatalogProviderSummary | undefined {
+  const t = id.trim();
+  if (!t) return undefined;
+  return catalog.providers.find((p) => p.id === t);
+}
+
+/**
+ * For OpenAI-compatible catalog providers without `validation.requiresBaseUrl`, prefer
+ * `validation.defaultApiBaseUrl` (Restormel Keys ≥0.2.7), then legacy top-level `defaultApiBaseUrl`,
+ * then per-id fallbacks (e.g. OpenAI / Mistral).
+ */
+export function resolveOpenAiCompatibleBaseUrlForCatalogProvider(
+  provider: CatalogProviderSummary,
+): { ok: true; baseUrl: string } | { ok: false; message: string } {
+  const fromValidation = provider.validation?.defaultApiBaseUrl?.trim();
+  const fromLegacyTopLevel = provider.defaultApiBaseUrl?.trim();
+  const fromCatalog = fromValidation || fromLegacyTopLevel;
+  if (fromCatalog) {
+    const parsed = z.string().url().safeParse(fromCatalog);
+    if (parsed.success) {
+      return { ok: true, baseUrl: fromCatalog.replace(/\/+$/, "") };
+    }
+  }
+  const legacy = resolveCatalogNativeBaseUrl(provider.id);
+  if (legacy) return { ok: true, baseUrl: legacy };
+  return {
+    ok: false,
+    message: `Provider "${provider.id}" has no default API base URL. Set validation.defaultApiBaseUrl in the Restormel Keys catalog or set validation.requiresBaseUrl and supply a base URL.`,
+  };
 }

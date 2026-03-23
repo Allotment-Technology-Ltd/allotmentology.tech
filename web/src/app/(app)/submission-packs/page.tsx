@@ -43,32 +43,32 @@ export default async function SubmissionsPage() {
         </EmptyState>
       ) : (
         <ul className="divide-y divide-zinc-800 overflow-hidden rounded-lg border border-zinc-800">
-          {rows.map(({ pack, opportunityTitle, funderName }) => (
+          {rows.map((row) => (
             <li
-              key={pack.id}
+              key={row.id}
               className="flex flex-col gap-2 bg-zinc-950/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <Link
-                  href={`/submission-packs/${pack.id}`}
+                  href={`/submission-packs/${row.id}`}
                   className="font-medium text-sky-400 hover:text-sky-300 hover:underline"
                 >
-                  {pack.title}
+                  {row.title}
                 </Link>
                 <p className="mt-0.5 truncate text-sm text-zinc-400">
-                  {opportunityTitle}
-                  {funderName ? ` · ${funderName}` : ""}
+                  {row.opportunityTitle}
+                  {row.funderName ? ` · ${row.funderName}` : ""}
                 </p>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Updated {formatDate(pack.updatedAt)}
+                  Updated {formatDate(row.updatedAt)}
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-200">
-                  {packStatusLabel(pack.status)}
+                  {packStatusLabel(row.status)}
                 </span>
                 <Link
-                  href={`/opportunities/${pack.opportunityId}#packs`}
+                  href={`/opportunities/${row.opportunityId}#packs`}
                   className="text-xs text-zinc-500 hover:text-zinc-300"
                 >
                   Opportunity

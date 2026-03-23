@@ -4,13 +4,13 @@ import { useActionState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { submissionPacks } from "@/db/schema/tables";
 import {
   PACK_STATUSES,
   PACK_STATUS_LABEL,
 } from "@/lib/opportunities/constants";
 import { formatDate } from "@/lib/format";
 import { PACK_FIELD_LABEL } from "@/lib/submission-packs/constants";
+import type { SubmissionPackRow } from "@/lib/submission-packs/types";
 
 import {
   runWritingAgentForPack,
@@ -28,10 +28,8 @@ const input =
   "w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100";
 const label = "mb-1 block text-xs font-medium text-zinc-500";
 
-type PackRow = typeof submissionPacks.$inferSelect;
-
 export function PackWorkspaceClient(props: {
-  pack: PackRow;
+  pack: SubmissionPackRow;
   opportunityId: string;
   opportunityTitle: string;
   funderName: string | null;
