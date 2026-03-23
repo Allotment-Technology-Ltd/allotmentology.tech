@@ -2,7 +2,11 @@
   "name": "allotment-technology-ltd",
   "private": true,
   "description": "Funding ops app lives in web/ — scripts forward there.",
+  "workspaces": [
+    "web"
+  ],
   "scripts": {
+    "prebuild": "npm --prefix web install",
     "dev": "npm --prefix web run dev",
     "dev:only": "npm --prefix web run dev:only",
     "build": "npm --prefix web run build",
