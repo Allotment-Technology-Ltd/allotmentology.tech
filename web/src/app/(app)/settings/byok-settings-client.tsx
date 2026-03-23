@@ -3,6 +3,8 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import type { ByokCatalogClientPayload } from "@/lib/restormel-keys/catalog";
+
 import {
   revokeProviderKeyFormAction,
   setDefaultProviderKeyFormAction,
@@ -17,6 +19,8 @@ export function ByokSettingsClient(props: {
   keys: ByokKeyListItem[];
   encryptsAtRest: boolean;
   envHasAi: boolean;
+  catalog: ByokCatalogClientPayload | null;
+  catalogError: string | null;
 }) {
   const router = useRouter();
   const [addFormKey, setAddFormKey] = useState(0);
@@ -39,10 +43,11 @@ export function ByokSettingsClient(props: {
     <div className="space-y-8">
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/30 p-4 text-sm text-zinc-400">
         <p>
-          Add OpenAI-compatible providers using the dropdowns below (base URL and models are filled
-          for you where possible). Validate your key, then save. Revoke an entry if a key is
-          exposed; use <strong className="font-medium text-zinc-300">Add new key</strong> to open a
-          fresh form for another provider.
+          Provider and model lists load from the Restormel Keys canonical catalog when available,
+          with a built-in fallback if the feed is down. Validate your key, then save. Revoke an
+          entry if a key is exposed; use{" "}
+          <strong className="font-medium text-zinc-300">Add new key</strong> to open a fresh form
+          for another provider.
         </p>
         {props.encryptsAtRest ? (
           <p className="mt-2 text-zinc-500">
@@ -144,6 +149,8 @@ export function ByokSettingsClient(props: {
 
       <ByokAddProviderForm
         key={addFormKey}
+        catalog={props.catalog}
+        catalogError={props.catalogError}
         onAddNewKey={() => setAddFormKey((k) => k + 1)}
       />
     </div>

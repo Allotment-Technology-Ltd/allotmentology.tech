@@ -29,6 +29,8 @@ export default async function ByokAiKeysSettingsPage() {
         keys={data.keys}
         encryptsAtRest={data.encryptsAtRest}
         envHasAi={data.envHasAi}
+        catalog={data.catalog}
+        catalogError={data.catalogError}
       />
 
       <Link

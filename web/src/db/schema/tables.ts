@@ -293,6 +293,8 @@ export const userAiProviderKeys = pgTable("user_ai_provider_keys", {
     .references(() => users.id, { onDelete: "cascade" }),
   label: varchar("label", { length: 255 }),
   providerName: varchar("provider_name", { length: 255 }).notNull().default("Custom"),
+  /** Restormel Keys catalog provider id (openai, anthropic, google) when sourced from canonical feed. */
+  catalogProviderId: varchar("catalog_provider_id", { length: 64 }),
   baseUrl: text("base_url").notNull(),
   model: varchar("model", { length: 512 }).notNull(),
   apiKeyStored: text("api_key_stored").notNull(),

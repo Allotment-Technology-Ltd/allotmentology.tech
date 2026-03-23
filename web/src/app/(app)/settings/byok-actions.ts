@@ -10,10 +10,16 @@ import {
   packApiKeyForStorage,
   shouldEncryptApiKeysAtRest,
 } from "@/lib/crypto/byok-secret";
+import { resolveCatalogNativeBaseUrl } from "@/lib/ai/provider/catalog-native-bases";
 import { getDefaultAiProvider } from "@/lib/ai/provider/env-config";
 import { validateOpenAiCompatibleChat } from "@/lib/ai/validate-openai-compatible";
+import { validateByokCatalogProvider } from "@/lib/ai/validate-native-provider";
 import { getAuthServer } from "@/lib/auth/server";
 import { getServerDb } from "@/lib/db/server";
+import {
+  fetchRestormelKeysCatalog,
+  type ByokCatalogClientPayload,
+} from "@/lib/restormel-keys/catalog";
 
 const BYOK_PATH = "/settings/restormel-keys";
 
@@ -37,12 +43,46 @@ function normalizeBaseUrl(url: string): string {
   return url.trim().replace(/\/+$/, "");
 }
 
-const validateSchema = z.object({
-  providerName: z.string().trim().min(1).max(255),
-  baseUrl: z.string().trim().url().max(4000),
-  model: z.string().trim().min(1).max(512),
-  apiKey: z.string().trim().min(1),
-});
+const CATALOG_PROVIDER_IDS = ["openai", "anthropic", "google"] as const;
+type CatalogProviderId = (typeof CATALOG_PROVIDER_IDS)[number];
+
+function parseCatalogProviderId(raw: unknown): CatalogProviderId | undefined {
+  if (typeof raw !== "string") return undefined;
+  const t = raw.trim();
+  return (CATALOG_PROVIDER_IDS as readonly string[]).includes(t)
+    ? (t as CatalogProviderId)
+    : undefined;
+}
+
+const validateSchema = z
+  .object({
+    providerName: z.string().trim().min(1).max(255),
+    baseUrl: z.string().trim().max(4000).optional().default(""),
+    model: z.string().trim().min(1).max(512),
+    apiKey: z.string().trim().min(1),
+    catalogProviderId: z.string().trim().optional().default(""),
+  })
+  .superRefine((val, ctx) => {
+    const cid = parseCatalogProviderId(val.catalogProviderId);
+    if (cid) return;
+    const u = val.baseUrl.trim();
+    if (!u) {
+      ctx.addIssue({
+        code: "custom",
+        message: "API base URL is required for this provider.",
+        path: ["baseUrl"],
+      });
+      return;
+    }
+    const urlParse = z.string().url().safeParse(u);
+    if (!urlParse.success) {
+      ctx.addIssue({
+        code: "custom",
+        message: "API base URL must be a valid URL.",
+        path: ["baseUrl"],
+      });
+    }
+  });
 
 const addSchema = validateSchema.extend({
   label: z.string().trim().max(255).optional().default(""),
@@ -64,7 +104,15 @@ export type ByokKeyListItem = {
   createdAt: Date;
 };
 
-export async function loadByokSettingsPageData() {
+export type ByokSettingsPageData = {
+  keys: ByokKeyListItem[];
+  encryptsAtRest: boolean;
+  envHasAi: boolean;
+  catalog: ByokCatalogClientPayload | null;
+  catalogError: string | null;
+};
+
+export async function loadByokSettingsPageData(): Promise<ByokSettingsPageData | null> {
   const user = await requireSessionUser();
   const appUserId = await getAppUserIdByEmail(user.email ?? "");
   if (!appUserId) return null;
@@ -89,10 +137,14 @@ export async function loadByokSettingsPageData() {
     )
     .orderBy(desc(userAiProviderKeys.isDefault), desc(userAiProviderKeys.updatedAt));
 
+  const catalogResult = await fetchRestormelKeysCatalog();
+
   return {
     keys: keys as ByokKeyListItem[],
     encryptsAtRest: shouldEncryptApiKeysAtRest(),
     envHasAi: getDefaultAiProvider() !== null,
+    catalog: catalogResult.ok ? catalogResult.clientPayload : null,
+    catalogError: catalogResult.ok ? null : catalogResult.message,
   };
 }
 
@@ -102,20 +154,23 @@ export async function validateByokKeyAction(
 ): Promise<ByokActionState> {
   const parsed = validateSchema.safeParse({
     providerName: formData.get("providerName"),
-    baseUrl: formData.get("baseUrl"),
+    baseUrl: String(formData.get("baseUrl") ?? ""),
     model: formData.get("model"),
     apiKey: formData.get("apiKey"),
+    catalogProviderId: String(formData.get("catalogProviderId") ?? ""),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid form." };
   }
 
-  const baseUrl = normalizeBaseUrl(parsed.data.baseUrl);
-  const result = await validateOpenAiCompatibleChat(
-    baseUrl,
-    parsed.data.apiKey,
-    parsed.data.model,
-  );
+  const cid = parseCatalogProviderId(parsed.data.catalogProviderId);
+  const result = cid
+    ? await validateByokCatalogProvider(cid, parsed.data.apiKey, parsed.data.model)
+    : await validateOpenAiCompatibleChat(
+        normalizeBaseUrl(parsed.data.baseUrl),
+        parsed.data.apiKey,
+        parsed.data.model,
+      );
   if (!result.ok) {
     return { error: result.message };
   }
@@ -129,9 +184,10 @@ export async function addProviderKeyAction(
   const parsed = addSchema.safeParse({
     label: String(formData.get("label") ?? ""),
     providerName: formData.get("providerName"),
-    baseUrl: formData.get("baseUrl"),
+    baseUrl: String(formData.get("baseUrl") ?? ""),
     model: formData.get("model"),
     apiKey: formData.get("apiKey"),
+    catalogProviderId: String(formData.get("catalogProviderId") ?? ""),
     isDefault: formData.get("isDefault") === "on",
   });
   if (!parsed.success) {
@@ -150,7 +206,12 @@ export async function addProviderKeyAction(
   }
 
   const db = getServerDb();
-  const baseUrl = normalizeBaseUrl(parsed.data.baseUrl);
+  const cid = parseCatalogProviderId(parsed.data.catalogProviderId);
+  const catalogBase = cid ? resolveCatalogNativeBaseUrl(cid) : null;
+  if (cid && !catalogBase) {
+    return { error: "Unsupported catalog provider id." };
+  }
+  const baseUrl = catalogBase ?? normalizeBaseUrl(parsed.data.baseUrl);
   const stored = packApiKeyForStorage(keyTrim);
 
   if (parsed.data.isDefault) {
@@ -169,6 +230,7 @@ export async function addProviderKeyAction(
     userId: appUserId,
     label: parsed.data.label || null,
     providerName: parsed.data.providerName,
+    catalogProviderId: cid ?? null,
     baseUrl,
     model: parsed.data.model,
     apiKeyStored: stored,

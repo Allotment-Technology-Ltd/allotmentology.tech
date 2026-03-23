@@ -6,6 +6,8 @@ import { userAiProviderKeys } from "@/db/schema/tables";
 import { readApiKeyFromStorage } from "@/lib/crypto/byok-secret";
 import { getServerDb } from "@/lib/db/server";
 
+import { createAnthropicNativeProvider } from "./anthropic-native";
+import { createGoogleGeminiNativeProvider } from "./google-gemini-native";
 import { createOpenAiCompatibleProvider } from "./openai-compatible";
 import type { AiProvider } from "./types";
 import { getDefaultAiModel, getDefaultAiProvider } from "./env-config";
@@ -40,6 +42,14 @@ export async function resolveAiProviderForUser(
   const apiKey = readApiKeyFromStorage(row.apiKeyStored);
   if (!apiKey) {
     return getDefaultAiProvider();
+  }
+
+  const cid = row.catalogProviderId?.trim();
+  if (cid === "anthropic") {
+    return createAnthropicNativeProvider({ apiKey });
+  }
+  if (cid === "google") {
+    return createGoogleGeminiNativeProvider({ apiKey });
   }
 
   const baseUrl = row.baseUrl.replace(/\/+$/, "");

@@ -96,6 +96,8 @@ npm run db:seed
 
 If unset, the app runs; AI server actions return a clear “not configured” message. If a user saves BYOK in the UI, that configuration takes precedence over shared environment variables for that user’s AI calls.
 
+**BYOK provider/model catalog:** The Settings UI loads the canonical Restormel Keys catalog from `GET /keys/dashboard/api/catalog` (default origin `https://restormel.dev` unless overridden). Set `RESTORMEL_KEYS_CATALOG_URL` in `web/.env` / Vercel if you need a different origin. The app tries `@restormel/keys` helpers `fetchCanonicalCatalog` / `fetchCanonicalCatalogWithFallback` when those exports exist in the installed version, then falls back to a direct HTTP fetch. After upgrading `@restormel/keys` / `@restormel/keys-cli`, run **`npm run restormel:patch`** from `web/` (or `npx @restormel/keys-cli patch`) to bump dependencies and run the catalog connectivity check; the app still works via direct catalog fetch if the SDK helpers are absent.
+
 ### Knowledge base and writing style setup
 
 After migrations, open `/knowledge` and:
