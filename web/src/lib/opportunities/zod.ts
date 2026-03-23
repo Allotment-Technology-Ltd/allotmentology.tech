@@ -41,6 +41,18 @@ export const opportunityFormSchema = z.object({
     .trim()
     .length(3, "Use a 3-letter currency code")
     .default("GBP"),
+  grantUrl: z
+    .string()
+    .optional()
+    .transform((v) => {
+      const s = (v ?? "").trim();
+      if (s === "") return undefined;
+      return s;
+    })
+    .refine((v) => v == null || z.string().url().safeParse(v).success, {
+      message: "Grant URL must be a valid http(s) URL.",
+    }),
+  productFitAssessmentMd: z.string().optional(),
 });
 
 export type OpportunityFormInput = z.infer<typeof opportunityFormSchema>;

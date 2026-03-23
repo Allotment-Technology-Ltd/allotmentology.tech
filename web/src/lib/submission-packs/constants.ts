@@ -4,6 +4,7 @@ export const PACK_FIELD_LABEL: Record<
   | "projectFraming"
   | "summary100"
   | "summary250"
+  | "applicationFormsMd"
   | "draftAnswersMd"
   | "missingInputsMd"
   | "risksMd"
@@ -14,6 +15,7 @@ export const PACK_FIELD_LABEL: Record<
   projectFraming: "Project framing",
   summary100: "Summary (~100 words)",
   summary250: "Summary (~250 words)",
+  applicationFormsMd: "Unified application form (Markdown)",
   draftAnswersMd: "Draft answers (Markdown)",
   missingInputsMd: "Missing inputs (Markdown)",
   risksMd: "Risks (Markdown)",

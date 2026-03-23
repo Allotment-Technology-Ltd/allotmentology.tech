@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { DEFAULT_APPLICATION_FORMS_MD } from "../lib/submission-packs/application-forms-template";
 import { createDb } from "./index";
 import {
   loadInitialCollateralPackFromDisk,
@@ -159,6 +160,7 @@ async function main() {
         "Allotment Technology delivers operator-grade allocation and access tooling for councils. This bid funds product hardening and a structured pilot so we can evidence adoption, support burden, and compliance outcomes before national rollout.",
       summary250:
         "Community infrastructure programmes depend on fair allocation and traceable access to physical assets (e.g. allotment keys). Our platform, Restormel Keys, gives councils a controlled workflow from application to handover with an audit trail. The requested funding covers engineering time to finish multi-tenant controls, improve operator UX for high-volume sites, and run a two-council pilot with success metrics agreed up front. Outputs include a deployment guide, training materials, and a short impact note suitable for follow-on public-sector bids.",
+      applicationFormsMd: DEFAULT_APPLICATION_FORMS_MD,
       draftAnswersMd:
         "## Q: What problem are you solving?\nCouncils lose time reconciling who holds which keys and whether returns happened on time.\n\n## Q: Why your team?\nWe ship production software and have operator feedback loops from live pilots.\n",
       missingInputsMd: "- Signed partner MOU (draft in progress)\n- Final budget line for external security review",

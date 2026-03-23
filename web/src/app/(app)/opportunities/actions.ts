@@ -34,6 +34,9 @@ import {
   packQuickSchema,
   taskQuickSchema,
 } from "@/lib/opportunities/zod";
+import { DEFAULT_APPLICATION_FORMS_MD } from "@/lib/submission-packs/application-forms-template";
+
+import { enrichOpportunityFromGrantUrl } from "./opportunity-ai-actions";
 
 export type FormState = { error: string | null };
 
@@ -112,6 +115,8 @@ function formDataToOpportunityPayload(fd: FormData) {
     internalNotes: String(fd.get("internalNotes") ?? ""),
     estimatedValue: String(fd.get("estimatedValue") ?? ""),
     currencyCode: String(fd.get("currencyCode") ?? "GBP"),
+    grantUrl: String(fd.get("grantUrl") ?? ""),
+    productFitAssessmentMd: String(fd.get("productFitAssessmentMd") ?? ""),
   };
 }
 
@@ -142,6 +147,10 @@ export async function saveOpportunity(
     estimatedValue: parsed.data.estimatedValue ?? null,
     currencyCode: parsed.data.currencyCode,
     ownerUserId: parsed.data.ownerUserId ?? null,
+    grantUrl: parsed.data.grantUrl ?? null,
+    productFitAssessmentMd: parsed.data.productFitAssessmentMd?.trim()
+      ? parsed.data.productFitAssessmentMd.trim()
+      : null,
     updatedAt: new Date(),
   };
 
@@ -151,6 +160,12 @@ export async function saveOpportunity(
       ? idRaw
       : null;
 
+  const redirectTo =
+    typeof formData.get("redirectTo") === "string"
+      ? formData.get("redirectTo")
+      : null;
+  const enrichAfterSave = formData.get("enrichAfterSave") === "1";
+
   if (existingId) {
     await db
       .update(opportunities)
@@ -158,6 +173,15 @@ export async function saveOpportunity(
       .where(eq(opportunities.id, existingId));
     revalidatePath("/opportunities");
     revalidatePath(`/opportunities/${existingId}`);
+    revalidatePath(`/opportunities/${existingId}/edit`);
+
+    if (enrichAfterSave && parsed.data.grantUrl) {
+      await enrichOpportunityFromGrantUrl(existingId);
+    }
+
+    if (redirectTo === "edit") {
+      redirect(`/opportunities/${existingId}/edit`);
+    }
     redirect(`/opportunities/${existingId}`);
   }
 
@@ -290,6 +314,7 @@ export async function addPackForOpportunity(
     opportunityId: parsed.data.opportunityId,
     title: parsed.data.title,
     status: parsed.data.status,
+    applicationFormsMd: DEFAULT_APPLICATION_FORMS_MD,
     updatedAt: new Date(),
   });
 

@@ -31,6 +31,8 @@ export default async function NewOpportunityPage() {
           internalNotes: "",
           estimatedValue: "",
           currencyCode: "GBP",
+          grantUrl: "",
+          productFitAssessmentMd: "",
         }}
       />
     </div>

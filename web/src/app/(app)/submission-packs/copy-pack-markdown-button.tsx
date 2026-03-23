@@ -36,6 +36,7 @@ export function CopyPackMarkdownButton(props: {
       projectFraming: String(fd.get("projectFraming") ?? ""),
       summary100: String(fd.get("summary100") ?? ""),
       summary250: String(fd.get("summary250") ?? ""),
+      applicationFormsMd: String(fd.get("applicationFormsMd") ?? ""),
       draftAnswersMd: String(fd.get("draftAnswersMd") ?? ""),
       missingInputsMd: String(fd.get("missingInputsMd") ?? ""),
       risksMd: String(fd.get("risksMd") ?? ""),

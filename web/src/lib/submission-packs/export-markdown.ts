@@ -8,6 +8,7 @@ export type PackExportPayload = {
   projectFraming: string;
   summary100: string;
   summary250: string;
+  applicationFormsMd: string;
   draftAnswersMd: string;
   missingInputsMd: string;
   risksMd: string;
@@ -30,6 +31,7 @@ export function buildPackExportMarkdown(
   lines.push("", "---", "");
 
   const sections: [string, string][] = [
+    [PACK_FIELD_LABEL.applicationFormsMd, pack.applicationFormsMd],
     [PACK_FIELD_LABEL.workingThesis, pack.workingThesis],
     [PACK_FIELD_LABEL.projectFraming, pack.projectFraming],
     [PACK_FIELD_LABEL.summary100, pack.summary100],

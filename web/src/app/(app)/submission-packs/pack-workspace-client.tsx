@@ -20,6 +20,7 @@ import {
 } from "./actions";
 import { ChecklistEditor } from "./checklist-editor";
 import { CopyPackMarkdownButton } from "./copy-pack-markdown-button";
+import { ResetApplicationFormsButton } from "./reset-application-forms-button";
 
 const initial: PackFormState = { error: null };
 
@@ -215,6 +216,29 @@ export function PackWorkspaceClient(props: {
         </div>
 
         <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/30 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-medium text-zinc-100">
+                {PACK_FIELD_LABEL.applicationFormsMd}
+              </h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                One editable Markdown workbook for the funder portal: word/character limits,
+                single- and multi-select checkboxes, uploads, budget, and final checks. Tick items
+                in the quick list or edit the Markdown directly — both stay in sync. This block is
+                included first in &quot;Copy pack as Markdown&quot; for easy paste‑out.
+              </p>
+            </div>
+            <ResetApplicationFormsButton packId={p.id} />
+          </div>
+          <ChecklistEditor
+            key={`app-forms-${p.id}-${p.updatedAt?.toString() ?? ""}`}
+            initial={p.applicationFormsMd}
+            name="applicationFormsMd"
+            rows={22}
+          />
+        </section>
+
+        <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/30 p-5">
           <h2 className="text-lg font-medium text-zinc-100">Narrative</h2>
           <div>
             <label className={label} htmlFor="workingThesis">
@@ -268,6 +292,10 @@ export function PackWorkspaceClient(props: {
 
         <section className="space-y-3 rounded-lg border border-zinc-800 bg-zinc-950/30 p-5">
           <h2 className="text-lg font-medium text-zinc-100">Application draft</h2>
+          <p className="text-sm text-zinc-500">
+            Longer narrative answers, AI drafts, or paste‑outs from the unified form above. Still
+            required for the ready-to-submit gate.
+          </p>
           <div>
             <label className={label} htmlFor="draftAnswersMd">
               {PACK_FIELD_LABEL.draftAnswersMd}

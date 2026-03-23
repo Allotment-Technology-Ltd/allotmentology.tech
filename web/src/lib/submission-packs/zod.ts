@@ -10,6 +10,7 @@ export const submissionPackFormSchema = z.object({
   projectFraming: z.string(),
   summary100: z.string(),
   summary250: z.string(),
+  applicationFormsMd: z.string(),
   draftAnswersMd: z.string(),
   missingInputsMd: z.string(),
   risksMd: z.string(),

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { opportunities, submissionPacks } from "@/db/schema/tables";
 import { getAuthServer } from "@/lib/auth/server";
 import { getServerDb } from "@/lib/db/server";
+import { DEFAULT_APPLICATION_FORMS_MD } from "@/lib/submission-packs/application-forms-template";
 import { evaluateSubmissionPackReadiness } from "@/lib/submission-packs/readiness";
 import { submissionPackFormSchema } from "@/lib/submission-packs/zod";
 import { generatePackDraftAi } from "./pack-ai-actions";
@@ -39,6 +40,7 @@ function formDataToPackPayload(fd: FormData) {
     projectFraming: String(fd.get("projectFraming") ?? ""),
     summary100: String(fd.get("summary100") ?? ""),
     summary250: String(fd.get("summary250") ?? ""),
+    applicationFormsMd: String(fd.get("applicationFormsMd") ?? ""),
     draftAnswersMd: String(fd.get("draftAnswersMd") ?? ""),
     missingInputsMd: String(fd.get("missingInputsMd") ?? ""),
     risksMd: String(fd.get("risksMd") ?? ""),
@@ -101,6 +103,7 @@ export async function saveSubmissionPack(
       projectFraming: parsed.data.projectFraming,
       summary100: parsed.data.summary100,
       summary250: parsed.data.summary250,
+      applicationFormsMd: parsed.data.applicationFormsMd,
       draftAnswersMd: parsed.data.draftAnswersMd,
       missingInputsMd: parsed.data.missingInputsMd,
       risksMd: parsed.data.risksMd,
@@ -113,6 +116,48 @@ export async function saveSubmissionPack(
   revalidatePath(`/submission-packs/${parsed.data.id}`);
   revalidatePath(`/opportunities/${existing.opportunityId}`);
   return { error: null };
+}
+
+export async function resetApplicationFormsToDefault(
+  _prev: PackFormState,
+  formData: FormData,
+): Promise<PackFormState> {
+  await requireSessionUser();
+  const packIdRaw = formData.get("packId");
+  if (typeof packIdRaw !== "string" || !z.string().uuid().safeParse(packIdRaw).success) {
+    return { error: "Invalid pack id." };
+  }
+
+  const db = getServerDb();
+  const [existing] = await db
+    .select({ opportunityId: submissionPacks.opportunityId })
+    .from(submissionPacks)
+    .where(eq(submissionPacks.id, packIdRaw))
+    .limit(1);
+
+  if (!existing) {
+    return { error: "Submission pack not found." };
+  }
+
+  await db
+    .update(submissionPacks)
+    .set({
+      applicationFormsMd: DEFAULT_APPLICATION_FORMS_MD,
+      updatedAt: new Date(),
+    })
+    .where(eq(submissionPacks.id, packIdRaw));
+
+  revalidatePath("/submission-packs");
+  revalidatePath(`/submission-packs/${packIdRaw}`);
+  revalidatePath(`/opportunities/${existing.opportunityId}`);
+  return { error: null };
+}
+
+/** Convenience for client components (e.g. reset button). */
+export async function resetApplicationFormsByPackId(packId: string): Promise<PackFormState> {
+  const fd = new FormData();
+  fd.set("packId", packId);
+  return resetApplicationFormsToDefault({ error: null }, fd);
 }
 
 export async function loadSubmissionPacksIndex() {

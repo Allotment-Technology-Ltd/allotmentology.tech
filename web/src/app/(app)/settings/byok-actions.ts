@@ -127,7 +127,7 @@ export async function addProviderKeyAction(
   formData: FormData,
 ): Promise<ByokActionState> {
   const parsed = addSchema.safeParse({
-    label: formData.get("label"),
+    label: String(formData.get("label") ?? ""),
     providerName: formData.get("providerName"),
     baseUrl: formData.get("baseUrl"),
     model: formData.get("model"),

@@ -48,6 +48,10 @@ export const opportunities = pgTable("opportunities", {
   ownerUserId: uuid("owner_user_id").references(() => users.id, {
     onDelete: "set null",
   }),
+  /** Official funding call / programme page URL */
+  grantUrl: text("grant_url"),
+  /** AI-generated product eligibility weighting and rationale (markdown) */
+  productFitAssessmentMd: text("product_fit_assessment_md"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -121,6 +125,8 @@ export const submissionPacks = pgTable("submission_packs", {
   projectFraming: text("project_framing").notNull().default(""),
   summary100: text("summary_100").notNull().default(""),
   summary250: text("summary_250").notNull().default(""),
+  /** Single Markdown workbook for funder forms: limits, checkboxes, uploads, etc. */
+  applicationFormsMd: text("application_forms_md").notNull().default(""),
   draftAnswersMd: text("draft_answers_md").notNull().default(""),
   missingInputsMd: text("missing_inputs_md").notNull().default(""),
   risksMd: text("risks_md").notNull().default(""),

@@ -163,6 +163,23 @@ export default async function OpportunityDetailPage({
             </dd>
           </div>
           <div className="sm:col-span-2">
+            <dt className="text-zinc-500">Grant / fund URL</dt>
+            <dd className="text-zinc-200">
+              {o.grantUrl?.trim() ? (
+                <a
+                  href={o.grantUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sky-400 hover:text-sky-300 hover:underline"
+                >
+                  {o.grantUrl}
+                </a>
+              ) : (
+                "—"
+              )}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
             <dt className="text-zinc-500">Summary</dt>
             <dd className="whitespace-pre-wrap text-zinc-300">
               {o.summary?.trim() ? o.summary : "—"}
@@ -219,6 +236,16 @@ export default async function OpportunityDetailPage({
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
           {o.eligibilityNotes?.trim() ? o.eligibilityNotes : "No eligibility notes yet. Add them when editing the opportunity."}
         </p>
+        <div className="mt-6 border-t border-zinc-800 pt-4">
+          <h3 className="text-sm font-medium text-zinc-200">
+            Product fit assessment
+          </h3>
+          <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-400">
+            {o.productFitAssessmentMd?.trim()
+              ? o.productFitAssessmentMd
+              : "No AI product-weighting assessment yet. Add a grant URL on the edit page and run “Pull details from grant URL”."}
+          </p>
+        </div>
       </section>
 
       <section id="notes" className={sectionClass}>
@@ -229,7 +256,15 @@ export default async function OpportunityDetailPage({
       </section>
 
       <section id="scoring" className={sectionClass}>
-        <h2 className={sectionTitle}>Scoring & triage</h2>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className={sectionTitle}>Scoring & triage</h2>
+          <Link
+            href={`/opportunities/${id}/edit#scoring`}
+            className="rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 hover:bg-zinc-700"
+          >
+            AI triage on edit
+          </Link>
+        </div>
         <div className="mb-6">
           <ScoreTriageCard
             overall={overall}

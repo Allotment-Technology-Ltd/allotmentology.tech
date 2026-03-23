@@ -29,6 +29,8 @@ export type OpportunityFormDefaults = {
   internalNotes: string;
   estimatedValue: string;
   currencyCode: string;
+  grantUrl: string;
+  productFitAssessmentMd: string;
 };
 
 export function OpportunityFormClient(props: {
@@ -43,7 +45,10 @@ export function OpportunityFormClient(props: {
   return (
     <form action={formAction} className="max-w-2xl space-y-6">
       {props.opportunityId ? (
-        <input type="hidden" name="id" value={props.opportunityId} />
+        <>
+          <input type="hidden" name="id" value={props.opportunityId} />
+          <input type="hidden" name="redirectTo" value="edit" />
+        </>
       ) : null}
       {state.error ? (
         <p className="rounded-md border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
@@ -129,6 +134,38 @@ export function OpportunityFormClient(props: {
       </div>
 
       <div>
+        <label className={labelClass} htmlFor="grantUrl">
+          Grant / fund URL
+        </label>
+        <input
+          id="grantUrl"
+          name="grantUrl"
+          type="url"
+          className={inputClass}
+          defaultValue={v.grantUrl}
+          placeholder="https://…"
+        />
+        <p className="mt-1 text-xs text-zinc-500">
+          Official programme or call page. Save the form, then use “Pull details from
+          URL” below to extract amounts, eligibility, and deadlines.
+        </p>
+      </div>
+
+      {props.opportunityId ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-400">
+            <input
+              type="checkbox"
+              name="enrichAfterSave"
+              value="1"
+              className="rounded border-zinc-600 bg-zinc-900"
+            />
+            After saving, fetch details from grant URL (AI)
+          </label>
+        </div>
+      ) : null}
+
+      <div>
         <label className={labelClass} htmlFor="summary">
           Summary
         </label>
@@ -139,6 +176,24 @@ export function OpportunityFormClient(props: {
           className={inputClass}
           defaultValue={v.summary}
         />
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="productFitAssessmentMd">
+          Product fit & eligibility assessment
+        </label>
+        <textarea
+          id="productFitAssessmentMd"
+          name="productFitAssessmentMd"
+          rows={6}
+          className={inputClass}
+          defaultValue={v.productFitAssessmentMd}
+          placeholder="AI can populate weighted product recommendations when you pull from the grant URL."
+        />
+        <p className="mt-1 text-xs text-zinc-500">
+          Initial assessment vs approved collateral / products — usually filled by “Pull
+          details from URL”; you can edit before saving.
+        </p>
       </div>
 
       <div>

@@ -13,9 +13,12 @@ const input =
 export function ChecklistEditor({
   initial,
   name,
+  rows = 8,
 }: {
   initial: string;
   name: string;
+  /** Textarea height (lines). */
+  rows?: number;
 }) {
   const [value, setValue] = useState(initial);
 
@@ -70,7 +73,7 @@ export function ChecklistEditor({
         name={name}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        rows={8}
+        rows={rows}
         className={input}
         spellCheck={false}
         placeholder={`- [ ] Export final budget\n- [ ] Partner letter attached\n- [ ] Portal answers pasted`}

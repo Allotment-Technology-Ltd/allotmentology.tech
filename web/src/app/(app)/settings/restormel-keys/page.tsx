@@ -19,9 +19,9 @@ export default async function ByokAiKeysSettingsPage() {
           BYOK and AI provider routing
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-          Add any OpenAI-compatible API: paste the base URL and model id from your
-          provider’s documentation, validate, then save. Manage multiple keys and
-          revoke any that should no longer be used.
+          Pick a provider and model from the lists, paste your API key, validate, then save.
+          Azure, local proxies, and fully custom hosts use a short URL + model field. Add another
+          provider anytime with <strong className="font-medium text-zinc-300">Add new key</strong>.
         </p>
       </div>
 
