@@ -1,11 +1,12 @@
 import "server-only";
 
+import { AiNotConfiguredError } from "@/lib/ai/errors";
+
 import type { AiProvider } from "@/lib/ai/provider/types";
 import {
-  getDefaultAiModel,
-  getDefaultAiProvider,
-  requireDefaultAiProvider,
-} from "@/lib/ai/provider/index";
+  resolveAiModelForUser,
+  resolveAiProviderForUser,
+} from "@/lib/ai/provider/resolve-user";
 
 export type FundingOpsAiContext = {
   provider: AiProvider;
@@ -14,39 +15,40 @@ export type FundingOpsAiContext = {
   opportunityId?: string | null;
 };
 
-export function createFundingOpsAiContext(
+export async function createFundingOpsAiContext(
   opts?: Partial<{
     userId: string | null;
     opportunityId: string | null;
     model: string;
     provider: AiProvider;
   }>,
-): FundingOpsAiContext {
-  const provider = opts?.provider ?? requireDefaultAiProvider();
-  return {
-    provider,
-    model: opts?.model ?? getDefaultAiModel(),
-    userId: opts?.userId,
-    opportunityId: opts?.opportunityId,
-  };
+): Promise<FundingOpsAiContext> {
+  const ctx = await tryCreateFundingOpsAiContext(opts);
+  if (!ctx) throw new AiNotConfiguredError();
+  return ctx;
 }
 
 /**
  * Same as {@link createFundingOpsAiContext} but returns null when AI is not configured.
+ * Resolves per-user BYOK from the database when `userId` is set, otherwise environment defaults.
  */
-export function tryCreateFundingOpsAiContext(
+export async function tryCreateFundingOpsAiContext(
   opts?: Partial<{
     userId: string | null;
     opportunityId: string | null;
     model: string;
     provider: AiProvider;
   }>,
-): FundingOpsAiContext | null {
-  const provider = opts?.provider ?? getDefaultAiProvider();
+): Promise<FundingOpsAiContext | null> {
+  const provider =
+    opts?.provider ??
+    (await resolveAiProviderForUser(opts?.userId ?? null));
   if (!provider) return null;
+  const model =
+    opts?.model ?? (await resolveAiModelForUser(opts?.userId ?? null));
   return {
     provider,
-    model: opts?.model ?? getDefaultAiModel(),
+    model,
     userId: opts?.userId,
     opportunityId: opts?.opportunityId,
   };

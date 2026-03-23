@@ -105,7 +105,7 @@ After pulling schema changes, run `npm run db:migrate`.
 - **Skills**: `classify-opportunity`, `score-opportunity-fit`, `choose-narrative-angle`, `generate-application-pack`, `detect-scope-conflict`, `compress-to-limit`, `extract-evidence` under `src/lib/ai/skills/`.
 - **Audit trail**: each successful structured call writes to `ai_generation_logs` (run `npm run db:migrate` after pulling migration `0005_*`).
 - **Provenance**: use `asVerified` / `asGenerated` from `src/lib/ai/types.ts` when composing UI or exports.
-- **Runtime**: `createFundingOpsAiContext({ userId, opportunityId })` from `src/lib/ai/runtime.ts` (throws if AI is not configured).
+- **Runtime**: `await createFundingOpsAiContext({ userId, opportunityId })` from `src/lib/ai/runtime.ts` (throws if AI is not configured). Per-user keys from **Settings → BYOK & AI keys** override env when present.
 
 ## Knowledge base + style profile
 

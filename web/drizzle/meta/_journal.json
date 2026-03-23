@@ -50,6 +50,13 @@
       "when": 1774273230963,
       "tag": "0006_silky_smasher",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774300000000,
+      "tag": "0007_user_ai_credentials",
+      "breakpoints": true
     }
   ]
 }

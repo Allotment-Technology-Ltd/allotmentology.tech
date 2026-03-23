@@ -105,7 +105,7 @@ export async function generatePackDraftAi(packId: string): Promise<PackDraftAiRe
       : [];
 
     const userId = await getAppUserIdByEmail(email);
-    const ctx = tryCreateFundingOpsAiContext({
+    const ctx = await tryCreateFundingOpsAiContext({
       userId,
       opportunityId: row.opportunity.id,
     });
@@ -113,7 +113,7 @@ export async function generatePackDraftAi(packId: string): Promise<PackDraftAiRe
       return {
         ok: false,
         error:
-          "AI is not configured. Set AI_API_KEY or OPENAI_API_KEY in the environment.",
+          "AI is not configured. Add your key under Settings → BYOK & AI keys, or set AI_API_KEY / OPENAI_API_KEY (or Restormel env vars) on the server.",
       };
     }
 

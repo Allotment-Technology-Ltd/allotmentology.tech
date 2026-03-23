@@ -51,7 +51,7 @@ npm install
 npm run db:migrate
 ```
 
-**Migrations on disk:** `web/drizzle/0000_init.sql` through `0006_silky_smasher.sql` (applied in order via Drizzle).
+**Migrations on disk:** `web/drizzle/0000_init.sql` through `0007_user_ai_credentials.sql` (applied in order via Drizzle).
 
 **When to re-run:** After every `git pull` that adds a new file under `web/drizzle/*.sql`, run `npm run db:migrate` against each environment (local, Neon preview branch, production) that should match the new schema.
 
@@ -92,8 +92,9 @@ npm run db:seed
 |----------|-----------|
 | `web/.env` | `AI_PROVIDER` (`openai-compatible` or `restormel-keys`), plus either OpenAI-style vars (`AI_API_KEY` / `AI_BASE_URL` / `AI_MODEL`) or Restormel vars (`RESTORMEL_KEYS_API_KEY` / `RESTORMEL_KEYS_BASE_URL` / `RESTORMEL_KEYS_MODEL`) |
 | Vercel | Same names if you use AI in production |
+| Per-user BYOK (optional) | After migration `0007_*`, users can save keys under **Settings → BYOK & AI keys**. Set `BYOK_ENCRYPTION_KEY` (32+ random characters) in `web/.env` / Vercel so keys can be encrypted at rest. |
 
-If unset, the app runs; AI server actions return a clear “not configured” message.
+If unset, the app runs; AI server actions return a clear “not configured” message. If a user saves BYOK in the UI, that configuration takes precedence over shared environment variables for that user’s AI calls.
 
 ### Knowledge base and writing style setup
 
@@ -178,7 +179,7 @@ Project **Cursor rules** under `.cursor/rules/` describe when to use **contact@r
 | OAuth client IDs/secrets | Neon Auth configuration (not in this repo) |
 | OpenAI (or compatible) key | `web/.env` / Vercel → `AI_API_KEY` or `OPENAI_API_KEY` |
 | Restormel adapter key | `web/.env` / Vercel → `RESTORMEL_KEYS_API_KEY` (when `AI_PROVIDER=restormel-keys`) |
-| Restormel API docs portal (Settings UI) | Optional `NEXT_PUBLIC_RESTORMEL_KEYS_API_PORTAL_URL` if the Zuplo portal URL changes; see `restormel.dev/keys/dashboard` → “API portal” |
+| BYOK encryption secret | `BYOK_ENCRYPTION_KEY` (32+ chars) — required only if operators use **Settings → BYOK & AI keys** to store per-user API keys |
 
 
 **Never commit:** `web/.env`, production URLs with embedded passwords, API keys.

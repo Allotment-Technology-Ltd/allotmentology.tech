@@ -105,12 +105,15 @@ export async function summariseOpportunityAi(
     const o = loaded.opportunity;
 
     const userId = await getAppUserIdByEmail(email);
-    const ctx = tryCreateFundingOpsAiContext({ userId, opportunityId: o.id });
+    const ctx = await tryCreateFundingOpsAiContext({
+      userId,
+      opportunityId: o.id,
+    });
     if (!ctx) {
       return {
         ok: false,
         error:
-          "AI is not configured. Set AI_API_KEY or OPENAI_API_KEY in the environment.",
+          "AI is not configured. Add your key under Settings → BYOK & AI keys, or set AI_API_KEY / OPENAI_API_KEY on the server.",
       };
     }
 
@@ -151,12 +154,15 @@ export async function chooseNarrativeAngleAi(
     const o = loaded.opportunity;
 
     const userId = await getAppUserIdByEmail(email);
-    const ctx = tryCreateFundingOpsAiContext({ userId, opportunityId: o.id });
+    const ctx = await tryCreateFundingOpsAiContext({
+      userId,
+      opportunityId: o.id,
+    });
     if (!ctx) {
       return {
         ok: false,
         error:
-          "AI is not configured. Set AI_API_KEY or OPENAI_API_KEY in the environment.",
+          "AI is not configured. Add your key under Settings → BYOK & AI keys, or set AI_API_KEY / OPENAI_API_KEY on the server.",
       };
     }
 
@@ -192,12 +198,15 @@ export async function suggestConflictsAi(
     const o = loaded.opportunity;
 
     const userId = await getAppUserIdByEmail(email);
-    const ctx = tryCreateFundingOpsAiContext({ userId, opportunityId: o.id });
+    const ctx = await tryCreateFundingOpsAiContext({
+      userId,
+      opportunityId: o.id,
+    });
     if (!ctx) {
       return {
         ok: false,
         error:
-          "AI is not configured. Set AI_API_KEY or OPENAI_API_KEY in the environment.",
+          "AI is not configured. Add your key under Settings → BYOK & AI keys, or set AI_API_KEY / OPENAI_API_KEY on the server.",
       };
     }
 

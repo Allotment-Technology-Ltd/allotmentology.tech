@@ -275,6 +275,23 @@ export const writingStyleSamples = pgTable("writing_style_samples", {
     .defaultNow(),
 });
 
+/**
+ * Per-user BYOK (encrypted API key + provider preset) for AI calls.
+ * Requires BYOK_ENCRYPTION_KEY in the environment to encrypt/decrypt at rest.
+ */
+export const userAiCredentials = pgTable("user_ai_credentials", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  providerPreset: varchar("provider_preset", { length: 32 }).notNull(),
+  customBaseUrl: text("custom_base_url"),
+  model: varchar("model", { length: 256 }).notNull(),
+  encryptedApiKey: text("encrypted_api_key").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 /** Audit trail for AI subagent/skill calls (Phase 8). */
 export const aiGenerationLogs = pgTable("ai_generation_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
