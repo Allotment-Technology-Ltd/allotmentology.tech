@@ -1,14 +1,12 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
-import { userAiCredentials } from "@/db/schema/tables";
-import { decryptByokSecret } from "@/lib/crypto/byok-secret";
+import { userAiProviderKeys } from "@/db/schema/tables";
+import { readApiKeyFromStorage } from "@/lib/crypto/byok-secret";
 import { getServerDb } from "@/lib/db/server";
-import { resolveEffectiveBaseUrl } from "@/lib/ai/byok-presets";
 
 import { createOpenAiCompatibleProvider } from "./openai-compatible";
-import { createRestormelKeysProvider } from "./restormel-keys";
 import type { AiProvider } from "./types";
 import { getDefaultAiModel, getDefaultAiProvider } from "./env-config";
 
@@ -20,37 +18,31 @@ export async function resolveAiProviderForUser(
   }
 
   const db = getServerDb();
-  const [row] = await db
+  const rows = await db
     .select()
-    .from(userAiCredentials)
-    .where(eq(userAiCredentials.userId, userId))
-    .limit(1);
+    .from(userAiProviderKeys)
+    .where(
+      and(
+        eq(userAiProviderKeys.userId, userId),
+        isNull(userAiProviderKeys.revokedAt),
+      ),
+    )
+    .orderBy(
+      desc(userAiProviderKeys.isDefault),
+      desc(userAiProviderKeys.updatedAt),
+    );
 
+  const row = rows[0];
   if (!row) {
     return getDefaultAiProvider();
   }
 
-  let apiKey: string;
-  try {
-    apiKey = decryptByokSecret(row.encryptedApiKey);
-  } catch {
+  const apiKey = readApiKeyFromStorage(row.apiKeyStored);
+  if (!apiKey) {
     return getDefaultAiProvider();
   }
 
-  let baseUrl: string;
-  try {
-    baseUrl = resolveEffectiveBaseUrl(
-      row.providerPreset,
-      row.customBaseUrl,
-    );
-  } catch {
-    return getDefaultAiProvider();
-  }
-
-  if (row.providerPreset === "restormel_keys") {
-    return createRestormelKeysProvider({ apiKey, baseUrl });
-  }
-
+  const baseUrl = row.baseUrl.replace(/\/+$/, "");
   return createOpenAiCompatibleProvider({ apiKey, baseUrl });
 }
 
@@ -62,15 +54,24 @@ export async function resolveAiModelForUser(
   }
 
   const db = getServerDb();
-  const [row] = await db
-    .select({ model: userAiCredentials.model })
-    .from(userAiCredentials)
-    .where(eq(userAiCredentials.userId, userId))
-    .limit(1);
+  const rows = await db
+    .select({ model: userAiProviderKeys.model })
+    .from(userAiProviderKeys)
+    .where(
+      and(
+        eq(userAiProviderKeys.userId, userId),
+        isNull(userAiProviderKeys.revokedAt),
+      ),
+    )
+    .orderBy(
+      desc(userAiProviderKeys.isDefault),
+      desc(userAiProviderKeys.updatedAt),
+    );
 
-  if (!row?.model?.trim()) {
+  const model = rows[0]?.model?.trim();
+  if (!model) {
     return getDefaultAiModel();
   }
 
-  return row.model.trim();
+  return model;
 }

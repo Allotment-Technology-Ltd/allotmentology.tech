@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { loadByokSettingsPageData } from "../byok-actions";
-import { ByokSettingsForm } from "../byok-settings-form";
+import { ByokSettingsClient } from "../byok-settings-client";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +19,17 @@ export default async function ByokAiKeysSettingsPage() {
           BYOK and AI provider routing
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-          Choose a provider and model, paste your API key, validate it, then save.
-          No external dashboards — everything runs here.
+          Add any OpenAI-compatible API: paste the base URL and model id from your
+          provider’s documentation, validate, then save. Manage multiple keys and
+          revoke any that should no longer be used.
         </p>
       </div>
 
-      <ByokSettingsForm initial={data} />
+      <ByokSettingsClient
+        keys={data.keys}
+        encryptsAtRest={data.encryptsAtRest}
+        envHasAi={data.envHasAi}
+      />
 
       <Link
         href="/settings"

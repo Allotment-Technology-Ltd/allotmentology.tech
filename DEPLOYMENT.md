@@ -51,7 +51,7 @@ npm install
 npm run db:migrate
 ```
 
-**Migrations on disk:** `web/drizzle/0000_init.sql` through `0007_user_ai_credentials.sql` (applied in order via Drizzle).
+**Migrations on disk:** `web/drizzle/0000_init.sql` through `0008_user_ai_provider_keys.sql` (applied in order via Drizzle).
 
 **When to re-run:** After every `git pull` that adds a new file under `web/drizzle/*.sql`, run `npm run db:migrate` against each environment (local, Neon preview branch, production) that should match the new schema.
 
@@ -179,7 +179,7 @@ Project **Cursor rules** under `.cursor/rules/` describe when to use **contact@r
 | OAuth client IDs/secrets | Neon Auth configuration (not in this repo) |
 | OpenAI (or compatible) key | `web/.env` / Vercel → `AI_API_KEY` or `OPENAI_API_KEY` |
 | Restormel adapter key | `web/.env` / Vercel → `RESTORMEL_KEYS_API_KEY` (when `AI_PROVIDER=restormel-keys`) |
-| BYOK encryption secret | `BYOK_ENCRYPTION_KEY` (32+ chars) — required only if operators use **Settings → BYOK & AI keys** to store per-user API keys |
+| BYOK encryption secret (optional) | `BYOK_ENCRYPTION_KEY` (8+ chars) — if set, encrypts user-saved API keys in the app before they are written to Postgres |
 
 
 **Never commit:** `web/.env`, production URLs with embedded passwords, API keys.

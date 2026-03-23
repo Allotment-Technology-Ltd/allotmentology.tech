@@ -276,17 +276,25 @@ export const writingStyleSamples = pgTable("writing_style_samples", {
 });
 
 /**
- * Per-user BYOK (encrypted API key + provider preset) for AI calls.
- * Requires BYOK_ENCRYPTION_KEY in the environment to encrypt/decrypt at rest.
+ * Per-user OpenAI-compatible API keys (one or many). Revoked rows stay for audit;
+ * `is_default` picks which key the writing agent uses.
+ * `api_key_stored` is plaintext unless BYOK_ENCRYPTION_KEY is set (see byok-secret).
  */
-export const userAiCredentials = pgTable("user_ai_credentials", {
+export const userAiProviderKeys = pgTable("user_ai_provider_keys", {
+  id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
-    .primaryKey()
+    .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  providerPreset: varchar("provider_preset", { length: 32 }).notNull(),
-  customBaseUrl: text("custom_base_url"),
-  model: varchar("model", { length: 256 }).notNull(),
-  encryptedApiKey: text("encrypted_api_key").notNull(),
+  label: varchar("label", { length: 255 }),
+  providerName: varchar("provider_name", { length: 255 }).notNull().default("Custom"),
+  baseUrl: text("base_url").notNull(),
+  model: varchar("model", { length: 512 }).notNull(),
+  apiKeyStored: text("api_key_stored").notNull(),
+  isDefault: boolean("is_default").notNull().default(false),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
