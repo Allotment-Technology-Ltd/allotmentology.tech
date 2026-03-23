@@ -1,5 +1,6 @@
 import "server-only";
 
+import { explainAnthropicModelNotFound } from "@/lib/ai/anthropic-model-hints";
 import { validateOpenAiCompatibleChat } from "@/lib/ai/validate-openai-compatible";
 
 /**
@@ -36,7 +37,11 @@ export async function validateAnthropicNativeKey(
         typeof (raw.error as { message?: unknown }).message === "string"
           ? String((raw.error as { message: string }).message)
           : res.statusText;
-      return { ok: false, message: `HTTP ${res.status}: ${errMsg}` };
+      let line = `HTTP ${res.status}: ${errMsg}`;
+      if (res.status === 404) {
+        line += ` — ${explainAnthropicModelNotFound(model)}`;
+      }
+      return { ok: false, message: line };
     }
     return { ok: true };
   } catch (e) {

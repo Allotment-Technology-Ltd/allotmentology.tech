@@ -31,6 +31,8 @@ export default async function ByokAiKeysSettingsPage() {
         envHasAi={data.envHasAi}
         catalog={data.catalog}
         catalogError={data.catalogError}
+        catalogSource={data.catalogSource}
+        catalogDegradedReason={data.catalogDegradedReason}
       />
 
       <Link

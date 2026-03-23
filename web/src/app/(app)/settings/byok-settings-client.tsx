@@ -21,6 +21,8 @@ export function ByokSettingsClient(props: {
   envHasAi: boolean;
   catalog: ByokCatalogClientPayload | null;
   catalogError: string | null;
+  catalogSource: "restormel" | "fallback" | null;
+  catalogDegradedReason: string | null;
 }) {
   const router = useRouter();
   const [addFormKey, setAddFormKey] = useState(0);
@@ -151,6 +153,8 @@ export function ByokSettingsClient(props: {
         key={addFormKey}
         catalog={props.catalog}
         catalogError={props.catalogError}
+        catalogSource={props.catalogSource}
+        catalogDegradedReason={props.catalogDegradedReason}
         onAddNewKey={() => setAddFormKey((k) => k + 1)}
       />
     </div>

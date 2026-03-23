@@ -1,5 +1,6 @@
 import "server-only";
 
+import { explainAnthropicModelNotFound } from "@/lib/ai/anthropic-model-hints";
 import type { ChatMessage } from "@/lib/ai/types";
 import { AiProviderError } from "@/lib/ai/errors";
 
@@ -77,10 +78,11 @@ export function createAnthropicNativeProvider(config: AnthropicNativeConfig): Ai
           typeof (raw.error as { message?: unknown }).message === "string"
             ? String((raw.error as { message: string }).message)
             : res.statusText;
-        throw new AiProviderError(
-          `Anthropic error (${res.status}): ${errMsg}`,
-          res.status,
-        );
+        let detail = `Anthropic error (${res.status}): ${errMsg}`;
+        if (res.status === 404) {
+          detail += ` — ${explainAnthropicModelNotFound(params.model)}`;
+        }
+        throw new AiProviderError(detail, res.status);
       }
 
       const content = raw.content as { type?: string; text?: string }[] | undefined;

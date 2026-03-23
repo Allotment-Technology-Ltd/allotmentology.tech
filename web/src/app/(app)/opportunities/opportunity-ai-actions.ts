@@ -27,6 +27,10 @@ import {
   formatMitchellBriefForStorage,
   runMitchellIntakeBrief,
 } from "@/lib/ai/skills/mitchell-intake";
+import {
+  formatMitchellSectionFollowupMd,
+  runMitchellSectionDraft as runMitchellSectionDraftSkill,
+} from "@/lib/ai/skills/mitchell-section-draft";
 import { runOpportunityFullScoring } from "@/lib/ai/skills/opportunity-full-scoring";
 import { DEFAULT_APPLICATION_FORMS_MD } from "@/lib/submission-packs/application-forms-template";
 import { detectScopeConflict } from "@/lib/ai/skills/detect-scope-conflict";
@@ -424,6 +428,122 @@ export async function enrichOpportunityFromGrantUrl(
     revalidatePath(`/opportunities/${opportunityId}/edit`);
 
     return { ok: true, model: ex.extractModel, logId: ex.extractLogId };
+  } catch (e) {
+    return handleAiError(e);
+  }
+}
+
+const mitchellSectionDraftParamsSchema = z.object({
+  sectionGoal: z
+    .string()
+    .trim()
+    .min(3, "Say what section or question Mitchell should draft.")
+    .max(4000),
+  extraInstructions: z.string().trim().max(8000).optional(),
+  /** Optional one-off paste (CV snippets, bio) — not stored */
+  pastedContext: z.string().trim().max(20000).optional(),
+  wordLimit: z.number().int().min(50).max(8000).optional().nullable(),
+});
+
+export type MitchellSectionDraftResult =
+  | { ok: true; model: string; logId: string }
+  | { ok: false; error: string };
+
+/**
+ * Mitchell drafts one application section: first draft + blanks + material asks.
+ * Persists `mitchell_section_draft_md` and `mitchell_section_followup_md`.
+ */
+export async function runMitchellSectionDraftForOpportunity(
+  opportunityId: string,
+  params: z.infer<typeof mitchellSectionDraftParamsSchema>,
+): Promise<MitchellSectionDraftResult> {
+  try {
+    const parsed = mitchellSectionDraftParamsSchema.safeParse(params);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid input.",
+      };
+    }
+
+    const { email } = await getSessionUserEmailOrRedirect();
+    const loaded = await loadOpportunityOrError(opportunityId);
+    if (!loaded.ok) {
+      return { ok: false, error: loaded.error };
+    }
+    const o = loaded.opportunity;
+
+    const userId = await getAppUserIdByEmail(email);
+    if (!userId) {
+      return { ok: false, error: "Local user profile missing; reload and try again." };
+    }
+
+    const ctx = await tryCreateFundingOpsAiContext({
+      userId,
+      opportunityId: o.id,
+    });
+    if (!ctx) {
+      return {
+        ok: false,
+        error:
+          "AI is not configured. Add your key under Settings → BYOK & AI keys, or set AI_API_KEY / OPENAI_API_KEY on the server.",
+      };
+    }
+
+    const [knowledgeLinks, approvedCollateral] = await Promise.all([
+      loadKnowledgeForOpportunity(opportunityId),
+      loadApprovedCollateralExcerpts(),
+    ]);
+
+    let grantPageExcerpt: string | null = null;
+    const grantUrl = o.grantUrl?.trim();
+    if (grantUrl) {
+      const fetched = await fetchGrantPagePlainText(grantUrl);
+      if (fetched.ok) {
+        grantPageExcerpt = fetched.text.slice(0, 12_000);
+      }
+    }
+
+    const p = parsed.data;
+    const gen = await runMitchellSectionDraftSkill(ctx, {
+      sectionGoal: p.sectionGoal,
+      extraInstructions: p.extraInstructions,
+      pastedContext: p.pastedContext,
+      wordLimit: p.wordLimit ?? null,
+      opportunity: {
+        title: o.title,
+        funderName: o.funderName,
+        summary: o.summary,
+        eligibilityNotes: o.eligibilityNotes,
+        productFitAssessmentMd: o.productFitAssessmentMd,
+      },
+      knowledgeLinks: knowledgeLinks.map((k) => ({
+        title: k.title,
+        summary: k.summary,
+        url: k.url,
+      })),
+      approvedCollateral,
+      grantPageExcerpt,
+      applicationFormGuidanceExcerpt: DEFAULT_APPLICATION_FORMS_MD.slice(0, 6000),
+    });
+
+    const v = gen.value;
+    const followupMd = formatMitchellSectionFollowupMd(v);
+
+    const db = getServerDb();
+    await db
+      .update(opportunities)
+      .set({
+        mitchellSectionDraftMd: v.draftMarkdown.trim(),
+        mitchellSectionFollowupMd: followupMd || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(opportunities.id, opportunityId));
+
+    revalidatePath(`/opportunities/${opportunityId}`);
+    revalidatePath(`/opportunities/${opportunityId}/edit`);
+
+    return { ok: true, model: gen.model, logId: gen.logId };
   } catch (e) {
     return handleAiError(e);
   }

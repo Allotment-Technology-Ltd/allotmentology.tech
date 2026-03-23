@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { runJsonModule } from "@/lib/ai/structured";
 import { buildMitchellSystemPrompt } from "@/lib/ai/mitchell";
+import {
+  formatMaterialRequestsMarkdown,
+  mitchellMaterialRequestSchema,
+} from "@/lib/ai/mitchell-materials";
 import type { FundingOpsAiContext } from "@/lib/ai/runtime";
 import { asGenerated } from "@/lib/ai/types";
 
@@ -10,6 +14,8 @@ export const mitchellIntakeOutputSchema = z.object({
   briefMarkdown: z.string().min(1),
   /** What only the human can supply (documents, sign-offs, portal checks) */
   asksUserFor: z.array(z.string()).default([]),
+  /** Structured asks for evidence: LinkedIn, CV, past applications, etc. */
+  materialRequests: z.array(mitchellMaterialRequestSchema).default([]),
   /** What the pipeline already did (fetch, extract, score) — plain bullets */
   whatIDidForYou: z.array(z.string()).default([]),
   /** Map unified form / pack sections to concrete hints using approved collateral and call text */
@@ -45,6 +51,12 @@ export function formatMitchellBriefForStorage(o: MitchellIntakeOutput): string {
         o.sectionWritingHints
           .map((h) => `**${h.sectionHeading}** — ${h.hint}`)
           .join("\n\n"),
+    );
+  }
+  if (o.materialRequests.length > 0) {
+    chunks.push(
+      "\n\n### Materials that would help me write stronger sections\n\n" +
+        formatMaterialRequestsMarkdown(o.materialRequests),
     );
   }
   if (o.asksUserFor.length > 0) {
@@ -103,10 +115,11 @@ export async function runMitchellIntakeBrief(
 Your job:
 1) briefMarkdown: speak in Mitchell's voice. Say what looks promising, what's thin, what needs checking. Be kind where it's earned — heart of gold — but never soft-soap missing evidence.
 2) whatIDidForYou: bullet list of concrete automated steps (e.g. pulled page text, filled summary/eligibility/deadline where possible, ran 8-dimension scores).
-3) asksUserFor: only things the human must supply — PDFs, portal-only fields, match funding proof, partner letters, etc. Be specific.
-4) sectionWritingHints: tie hints to the unified application scaffold headings (below). Reference approved collateral titles where useful; do not invent facts.
-5) verifyOnPortal: deadlines, amounts, eligibility — always flag portal/PDF confirmation.
-6) heartOfGoldLine: one short genuine line of encouragement or solidarity.
+3) materialRequests: when writing later will need evidence, ask for structured items — LinkedIn URL, CV/résumé, portfolio, previous applications, references, financials. Short messages in Mitchell's voice.
+4) asksUserFor: other things the human must supply — portal-only fields, match funding proof, partner letters, etc. Be specific.
+5) sectionWritingHints: tie hints to the unified application scaffold headings (below). Reference approved collateral titles where useful; do not invent facts.
+6) verifyOnPortal: deadlines, amounts, eligibility — always flag portal/PDF confirmation.
+7) heartOfGoldLine: one short genuine line of encouragement or solidarity.
 
 Keep briefMarkdown usable as the main "Mitchell brief" on the opportunity page.`,
     userPayload: JSON.stringify(input, null, 2),

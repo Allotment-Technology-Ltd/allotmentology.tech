@@ -27,6 +27,8 @@ const defaultPreset = BYOK_PROVIDER_PRESETS[0]!;
 export function ByokAddProviderForm(props: {
   catalog: ByokCatalogClientPayload | null;
   catalogError: string | null;
+  catalogSource: "restormel" | "fallback" | null;
+  catalogDegradedReason: string | null;
   onAddNewKey: () => void;
 }) {
   const useCatalog = Boolean(
@@ -40,6 +42,19 @@ export function ByokAddProviderForm(props: {
           <p className="font-medium text-amber-100">Restormel catalog unavailable</p>
           <p className="mt-1 text-amber-100/80">
             Using the built-in provider list until the feed recovers. ({props.catalogError})
+          </p>
+        </div>
+      ) : null}
+
+      {props.catalog &&
+      (props.catalogSource === "fallback" || props.catalogDegradedReason) ? (
+        <div className="rounded-lg border border-amber-900/50 bg-amber-950/25 px-4 py-3 text-sm text-amber-100/90">
+          <p className="font-medium text-amber-100">Degraded catalog</p>
+          <p className="mt-1 text-amber-100/80">
+            Source: {props.catalogSource ?? "unknown"}.
+            {props.catalogDegradedReason
+              ? ` ${props.catalogDegradedReason}`
+              : " Using the built-in fallback list until the canonical feed is reachable."}
           </p>
         </div>
       ) : null}
@@ -116,7 +131,8 @@ function CatalogAddProviderSection(props: {
             Provider and model lists are loaded from the Restormel Keys canonical catalog (
             <code className="rounded bg-zinc-800 px-1">/keys/dashboard/api/catalog</code>
             ). Native OpenAI, Anthropic, and Google models use each vendor&apos;s API; validate uses
-            the matching protocol for the provider you pick.
+            the matching protocol for the provider you pick. If Anthropic returns 404, the model id is
+            usually retired — pick a current id from Anthropic&apos;s model docs and re-save your key.
           </p>
         </div>
         <button

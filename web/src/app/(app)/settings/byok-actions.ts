@@ -110,6 +110,10 @@ export type ByokSettingsPageData = {
   envHasAi: boolean;
   catalog: ByokCatalogClientPayload | null;
   catalogError: string | null;
+  /** Canonical feed used the SDK; "fallback" means local preset catalog. */
+  catalogSource: "restormel" | "fallback" | null;
+  /** Set when using fallback or partial degradation (still have a catalog). */
+  catalogDegradedReason: string | null;
 };
 
 export async function loadByokSettingsPageData(): Promise<ByokSettingsPageData | null> {
@@ -145,6 +149,10 @@ export async function loadByokSettingsPageData(): Promise<ByokSettingsPageData |
     envHasAi: getDefaultAiProvider() !== null,
     catalog: catalogResult.ok ? catalogResult.clientPayload : null,
     catalogError: catalogResult.ok ? null : catalogResult.message,
+    catalogSource: catalogResult.ok ? catalogResult.catalogSource : null,
+    catalogDegradedReason: catalogResult.ok
+      ? (catalogResult.degradedReason ?? null)
+      : null,
   };
 }
 

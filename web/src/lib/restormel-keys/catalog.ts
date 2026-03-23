@@ -1,8 +1,12 @@
 import "server-only";
 
+import { fetchCanonicalCatalogWithFallback } from "@restormel/keys/dashboard";
 import { z } from "zod";
 
-/** Default public catalog (override with RESTORMEL_KEYS_CATALOG_URL). */
+import { CATALOG_PROVIDER_MODEL_DENYLIST } from "@/lib/restormel-keys/catalog-denylist";
+import { buildLocalFallbackCatalog } from "@/lib/restormel-keys/catalog-fallback";
+
+/** Default public catalog host (override with RESTORMEL_KEYS_BASE or RESTORMEL_KEYS_CATALOG_URL). */
 export const DEFAULT_RESTORMEL_KEYS_CATALOG_URL =
   "https://restormel.dev/keys/dashboard/api/catalog";
 
@@ -10,14 +14,14 @@ const catalogVariantSchema = z.object({
   id: z.string(),
   providerType: z.string(),
   providerModelId: z.string(),
-  availabilityStatus: z.string().optional(),
+  availabilityStatus: z.string().nullable().optional(),
 });
 
 const catalogModelEntrySchema = z.object({
   id: z.string(),
   canonicalName: z.string(),
-  family: z.string().optional(),
-  lifecycleState: z.string().optional(),
+  family: z.string().nullable().optional(),
+  lifecycleState: z.string().nullable().optional(),
   providerTypes: z.array(z.string()),
   variants: z.array(catalogVariantSchema),
 });
@@ -41,6 +45,13 @@ export const restormelKeysCatalogSchema = z.object({
   generatedAt: z.string().optional(),
   providers: z.array(catalogProviderSummarySchema),
   data: z.array(catalogModelEntrySchema),
+  paging: z
+    .object({
+      limit: z.number(),
+      offset: z.number(),
+      count: z.number(),
+    })
+    .optional(),
 });
 
 export type RestormelKeysCatalog = z.infer<typeof restormelKeysCatalogSchema>;
@@ -59,21 +70,72 @@ export type ByokCatalogClientPayload = {
 };
 
 export type CatalogFetchResult =
-  | { ok: true; catalog: RestormelKeysCatalog; clientPayload: ByokCatalogClientPayload }
+  | {
+      ok: true;
+      catalog: RestormelKeysCatalog;
+      clientPayload: ByokCatalogClientPayload;
+      catalogSource: "restormel" | "fallback";
+      degradedReason?: string;
+    }
   | { ok: false; message: string };
 
+const BAD_MODEL_LIFECYCLES = new Set([
+  "deprecated",
+  "retired",
+  "sunset",
+  "end_of_life",
+  "eol",
+]);
+
+function isModelLifecycleSelectable(lifecycle: string | null | undefined): boolean {
+  if (lifecycle == null || lifecycle === "") return true;
+  const s = lifecycle.trim().toLowerCase();
+  return !BAD_MODEL_LIFECYCLES.has(s);
+}
+
+/**
+ * Prefer explicit `availabilityStatus === "available"`. If the field is absent (legacy
+ * feeds), allow the variant and rely on lifecycle + denylist gating.
+ */
+function isVariantSelectable(
+  providerModelId: string,
+  availabilityStatus: string | null | undefined,
+): boolean {
+  if (CATALOG_PROVIDER_MODEL_DENYLIST.has(providerModelId.trim())) return false;
+  const st = availabilityStatus?.trim() ?? "";
+  if (st !== "" && st !== "available") return false;
+  return true;
+}
+
+/**
+ * Apply viability gating: GA lifecycle, variant availability === available, denylist.
+ */
+export function filterCatalogForByokUi(
+  catalog: RestormelKeysCatalog,
+): RestormelKeysCatalog {
+  const data = catalog.data
+    .filter((m) => isModelLifecycleSelectable(m.lifecycleState))
+    .map((m) => ({
+      ...m,
+      variants: m.variants.filter((v) =>
+        isVariantSelectable(v.providerModelId, v.availabilityStatus ?? null),
+      ),
+    }))
+    .filter((m) => m.variants.length > 0);
+
+  return { ...catalog, data };
+}
+
 function buildClientPayload(catalog: RestormelKeysCatalog): ByokCatalogClientPayload {
-  const providers = catalog.providers.map((p) => ({
+  const gated = filterCatalogForByokUi(catalog);
+  const providers = gated.providers.map((p) => ({
     id: p.id,
     displayName: p.displayName,
   }));
 
   const models: ByokCatalogClientPayload["models"] = [];
-  for (const m of catalog.data) {
+  for (const m of gated.data) {
     for (const v of m.variants) {
-      if (v.availabilityStatus && v.availabilityStatus !== "available") {
-        continue;
-      }
       models.push({
         catalogProviderId: v.providerType,
         providerModelId: v.providerModelId,
@@ -84,49 +146,38 @@ function buildClientPayload(catalog: RestormelKeysCatalog): ByokCatalogClientPay
   }
 
   return {
-    contractVersion: catalog.contractVersion,
-    generatedAt: catalog.generatedAt,
+    contractVersion: gated.contractVersion,
+    generatedAt: gated.generatedAt,
     providers,
     models,
   };
 }
 
-/**
- * When `@restormel/keys` ships catalog helpers (patch release), prefer them so routing matches
- * the dashboard contract. Falls back to direct fetch when helpers are absent or fail.
- */
-async function tryFetchCatalogViaSdk(
-  catalogUrl: string,
-): Promise<unknown | null> {
-  try {
-    const mod = (await import("@restormel/keys")) as Record<string, unknown>;
-    const withFallback = mod.fetchCanonicalCatalogWithFallback;
-    const plain = mod.fetchCanonicalCatalog;
-    if (typeof withFallback === "function") {
-      const out = await (
-        withFallback as (opts?: {
-          catalogUrl?: string;
-          fallbackCatalogUrl?: string;
-        }) => Promise<unknown>
-      )({
-        catalogUrl,
-        fallbackCatalogUrl: DEFAULT_RESTORMEL_KEYS_CATALOG_URL,
-      });
-      return out ?? null;
+function getDashboardBaseUrl(): string {
+  const full = process.env.RESTORMEL_KEYS_CATALOG_URL?.trim();
+  if (full) {
+    try {
+      const u = new URL(full);
+      if (u.pathname.includes("/keys/dashboard/api/catalog")) {
+        return u.origin;
+      }
+      return u.origin;
+    } catch {
+      /* fall through */
     }
-    if (typeof plain === "function") {
-      const out = await (
-        plain as (opts?: { catalogUrl?: string }) => Promise<unknown>
-      )({ catalogUrl });
-      return out ?? null;
-    }
-  } catch {
-    return null;
   }
-  return null;
+  const b = process.env.RESTORMEL_KEYS_BASE?.trim();
+  if (b) return b.replace(/\/+$/, "");
+  return "https://restormel.dev";
 }
 
-function parseCatalogJson(json: unknown): CatalogFetchResult {
+type ParsedCatalogOk = {
+  ok: true;
+  catalog: RestormelKeysCatalog;
+  clientPayload: ByokCatalogClientPayload;
+};
+
+function parseCatalogJson(json: unknown): ParsedCatalogOk | { ok: false; message: string } {
   const parsed = restormelKeysCatalogSchema.safeParse(json);
   if (!parsed.success) {
     return {
@@ -141,7 +192,10 @@ function parseCatalogJson(json: unknown): CatalogFetchResult {
 
   const clientPayload = buildClientPayload(parsed.data);
   if (clientPayload.models.length === 0) {
-    return { ok: false, message: "Catalog returned no models." };
+    return {
+      ok: false,
+      message: "No viable models after lifecycle and availability filtering.",
+    };
   }
 
   return {
@@ -152,51 +206,51 @@ function parseCatalogJson(json: unknown): CatalogFetchResult {
 }
 
 /**
- * Fetch Restormel Keys canonical provider/model catalog.
+ * Fetch Restormel Keys canonical provider/model catalog via @restormel/keys, with
+ * local fallback when the feed is down. Never call the catalog from the browser.
  */
 export async function fetchRestormelKeysCatalog(): Promise<CatalogFetchResult> {
-  const url =
-    process.env.RESTORMEL_KEYS_CATALOG_URL?.trim() || DEFAULT_RESTORMEL_KEYS_CATALOG_URL;
+  const baseUrl = getDashboardBaseUrl();
 
-  const sdkJson = await tryFetchCatalogViaSdk(url);
-  if (sdkJson != null) {
-    const parsed = parseCatalogJson(sdkJson);
-    if (parsed.ok) {
-      return parsed;
-    }
-    /* SDK returned data we could not parse — fall through to HTTP fetch. */
-  }
-
-  const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), 12_000);
   try {
-    const res = await fetch(url, {
-      method: "GET",
-      signal: ac.signal,
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "AllotmentFundingOps/1.0 (BYOK catalog)",
-      },
-      next: { revalidate: 300 },
-    });
-    clearTimeout(t);
+    const { catalog, source, degradedReason } =
+      await fetchCanonicalCatalogWithFallback({
+        baseUrl,
+        fallback: async () => buildLocalFallbackCatalog(),
+      });
 
-    if (!res.ok) {
+    const parsed = parseCatalogJson(catalog as unknown);
+    if (!parsed.ok) {
+      const fb = parseCatalogJson(buildLocalFallbackCatalog());
+      if (!fb.ok) {
+        return { ok: false, message: parsed.message };
+      }
       return {
-        ok: false,
-        message: `Catalog HTTP ${res.status} (${url})`,
+        ...fb,
+        catalogSource: "fallback",
+        degradedReason:
+          [degradedReason, "Canonical catalog failed validation; using local fallback."]
+            .filter(Boolean)
+            .join(" "),
       };
     }
 
-    const json: unknown = await res.json().catch(() => null);
-    const parsed = parseCatalogJson(json);
-    if (!parsed.ok) {
-      return parsed;
-    }
-    return parsed;
+    return {
+      ...parsed,
+      catalogSource: source,
+      degradedReason:
+        source === "fallback" ? degradedReason : undefined,
+    };
   } catch (e) {
-    clearTimeout(t);
     const msg = e instanceof Error ? e.message : "Catalog request failed.";
-    return { ok: false, message: msg };
+    const fb = parseCatalogJson(buildLocalFallbackCatalog());
+    if (!fb.ok) {
+      return { ok: false, message: msg };
+    }
+    return {
+      ...fb,
+      catalogSource: "fallback",
+      degradedReason: msg,
+    };
   }
 }

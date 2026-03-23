@@ -39,3 +39,9 @@ export {
   runMitchellIntakeBrief,
   type MitchellIntakeOutput,
 } from "./mitchell-intake";
+export {
+  formatMitchellSectionFollowupMd,
+  mitchellSectionDraftOutputSchema,
+  runMitchellSectionDraft,
+  type MitchellSectionDraftOutput,
+} from "./mitchell-section-draft";

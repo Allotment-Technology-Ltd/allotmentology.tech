@@ -54,6 +54,10 @@ export const opportunities = pgTable("opportunities", {
   productFitAssessmentMd: text("product_fit_assessment_md"),
   /** Mitchell intake: personality brief, asks, and writing hints (markdown) */
   mitchellBriefMd: text("mitchell_brief_md"),
+  /** Latest Mitchell section draft (markdown) */
+  mitchellSectionDraftMd: text("mitchell_section_draft_md"),
+  /** Blanks, material asks, and next steps for that draft (markdown) */
+  mitchellSectionFollowupMd: text("mitchell_section_followup_md"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

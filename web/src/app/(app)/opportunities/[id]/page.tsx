@@ -131,6 +131,7 @@ export default async function OpportunityDetailPage({
           [
             ["#overview", "Overview"],
             ["#mitchell", "Mitchell"],
+            ["#mitchell-draft", "Section draft"],
             ["#eligibility", "Eligibility"],
             ["#notes", "Notes"],
             ["#scoring", "Scoring"],
@@ -212,6 +213,43 @@ export default async function OpportunityDetailPage({
           <p className="text-sm text-zinc-500">
             No brief yet — add a grant URL and run Mitchell intake from Edit (or create
             the opportunity with a URL to run intake automatically).
+          </p>
+        )}
+      </section>
+
+      <section id="mitchell-draft" className={sectionClass}>
+        <div className="flex flex-wrap items-center gap-3">
+          <MitchellAvatar size={44} />
+          <h2 className={sectionTitle}>Section draft</h2>
+        </div>
+        <p className="text-sm text-zinc-500">
+          First-pass copy with placeholders, plus what Mitchell needs to fill them —
+          generate from{" "}
+          <Link href={`/opportunities/${id}/edit#mitchell-draft`} className="text-sky-400 hover:underline">
+            Edit → Mitchell — draft a section
+          </Link>
+          .
+        </p>
+        {o.mitchellSectionDraftMd?.trim() ? (
+          <div className="mt-3 space-y-4">
+            <div className="rounded-md border border-zinc-800 bg-zinc-950/50 p-4 text-sm text-zinc-200">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Draft
+              </p>
+              <MarkdownPreview markdown={o.mitchellSectionDraftMd} />
+            </div>
+            {o.mitchellSectionFollowupMd?.trim() ? (
+              <div className="rounded-md border border-amber-900/40 bg-amber-950/20 p-4 text-sm text-zinc-200">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-200/80">
+                  Blanks and materials
+                </p>
+                <MarkdownPreview markdown={o.mitchellSectionFollowupMd} />
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500">
+            No section draft yet.
           </p>
         )}
       </section>
