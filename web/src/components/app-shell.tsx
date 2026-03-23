@@ -10,6 +10,7 @@ const nav = [
   { href: "/knowledge", label: "Knowledge" },
   { href: "/deadlines", label: "Deadlines" },
   { href: "/settings", label: "Settings" },
+  { href: "/settings/restormel-keys", label: "BYOK & AI keys" },
   { href: "/conflicts", label: "Conflicts" },
   { href: "/watchlist", label: "Watchlist" },
 ] as const;
