@@ -9,7 +9,7 @@ import {
   tasks,
   users,
 } from "@/db/schema/tables";
-import { authServer } from "@/lib/auth/server";
+import { getAuthServer } from "@/lib/auth/server";
 import { getServerDb } from "@/lib/db/server";
 import {
   taskDeadlineBucket,
@@ -17,7 +17,7 @@ import {
 } from "@/lib/tasks/deadline-buckets";
 
 async function requireSessionUser() {
-  const { data } = await authServer.getSession();
+  const { data } = await getAuthServer().getSession();
   if (!data?.user?.email) {
     redirect("/auth/sign-in");
   }

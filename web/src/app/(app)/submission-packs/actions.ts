@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { opportunities, submissionPacks } from "@/db/schema/tables";
-import { authServer } from "@/lib/auth/server";
+import { getAuthServer } from "@/lib/auth/server";
 import { getServerDb } from "@/lib/db/server";
 import { evaluateSubmissionPackReadiness } from "@/lib/submission-packs/readiness";
 import { submissionPackFormSchema } from "@/lib/submission-packs/zod";
@@ -14,7 +14,7 @@ import { submissionPackFormSchema } from "@/lib/submission-packs/zod";
 export type PackFormState = { error: string | null; issues?: string[] };
 
 async function requireSessionUser() {
-  const { data } = await authServer.getSession();
+  const { data } = await getAuthServer().getSession();
   if (!data?.user?.email) {
     redirect("/auth/sign-in");
   }

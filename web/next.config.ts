@@ -1,8 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  env: {
+    NEXT_PUBLIC_NEON_AUTH_BASE_URL:
+      process.env.NEXT_PUBLIC_NEON_AUTH_BASE_URL ??
+      process.env.NEON_AUTH_BASE_URL ??
+      "",
+  },
 };
 
 export default nextConfig;

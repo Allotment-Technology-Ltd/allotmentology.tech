@@ -1,11 +1,30 @@
 import type { NextRequest } from "next/server";
-import { neonAuthMiddleware } from "@neondatabase/auth/next/server";
+import { NextResponse } from "next/server";
 
-const runAuth = neonAuthMiddleware({
-  loginUrl: "/auth/sign-in",
-});
+import { isNeonAuthConfigured } from "@/lib/auth/auth-config";
 
 export async function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  if (isNeonAuthConfigured() && path === "/setup") {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  if (!isNeonAuthConfigured()) {
+    if (
+      path === "/setup" ||
+      path.startsWith("/_next") ||
+      path === "/favicon.ico"
+    ) {
+      return NextResponse.next();
+    }
+    return NextResponse.redirect(new URL("/setup", request.url));
+  }
+
+  const { neonAuthMiddleware } = await import("@neondatabase/auth/next/server");
+  const runAuth = neonAuthMiddleware({
+    loginUrl: "/auth/sign-in",
+  });
   return runAuth(request);
 }
 

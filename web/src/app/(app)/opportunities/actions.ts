@@ -14,7 +14,7 @@ import {
   users,
 } from "@/db/schema/tables";
 import { getServerDb } from "@/lib/db/server";
-import { authServer } from "@/lib/auth/server";
+import { getAuthServer } from "@/lib/auth/server";
 import { OPPORTUNITY_STATUSES } from "@/lib/opportunities/constants";
 import {
   averageFit,
@@ -34,7 +34,7 @@ import {
 export type FormState = { error: string | null };
 
 async function requireSessionUser() {
-  const { data } = await authServer.getSession();
+  const { data } = await getAuthServer().getSession();
   if (!data?.user?.email) {
     redirect("/auth/sign-in");
   }

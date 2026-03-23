@@ -13,14 +13,14 @@ import {
   users,
 } from "@/db/schema/tables";
 import { collateralFormSchema } from "@/lib/collateral/zod";
-import { authServer } from "@/lib/auth/server";
+import { getAuthServer } from "@/lib/auth/server";
 import { getServerDb } from "@/lib/db/server";
 import { COLLATERAL_KINDS } from "@/lib/collateral/constants";
 
 export type FormState = { error: string | null };
 
 async function requireSessionUser() {
-  const { data } = await authServer.getSession();
+  const { data } = await getAuthServer().getSession();
   if (!data?.user?.email) redirect("/auth/sign-in");
   return data.user;
 }

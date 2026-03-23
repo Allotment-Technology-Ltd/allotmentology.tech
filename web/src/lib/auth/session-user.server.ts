@@ -4,11 +4,11 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { users } from "@/db/schema/tables";
-import { authServer } from "@/lib/auth/server";
+import { getAuthServer } from "@/lib/auth/server";
 import { getServerDb } from "@/lib/db/server";
 
 export async function getSessionUserEmailOrRedirect(): Promise<{ email: string }> {
-  const { data } = await authServer.getSession();
+  const { data } = await getAuthServer().getSession();
   const email = data?.user?.email;
   if (!email) {
     redirect("/auth/sign-in");

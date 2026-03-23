@@ -1,12 +1,17 @@
 "use client";
 
 import { NeonAuthUIProvider } from "@neondatabase/auth/react";
-import { authClient } from "@/lib/auth/client";
+
+import { getAuthClient, isNeonAuthConfiguredClient } from "@/lib/auth/client";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  if (!isNeonAuthConfiguredClient()) {
+    return <>{children}</>;
+  }
+
   return (
     <NeonAuthUIProvider
-      authClient={authClient}
+      authClient={getAuthClient()}
       redirectTo="/"
       social={{ providers: ["google"] }}
     >

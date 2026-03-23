@@ -3,13 +3,16 @@ import "server-only";
 import { createDb } from "@/db";
 import { users } from "@/db/schema/tables";
 
-import { authServer } from "./server";
+import { isNeonAuthConfigured } from "./auth-config";
+import { getAuthServer } from "./server";
 
 /**
  * Upserts `public.users` from the Neon Auth session (first sign-in and profile refresh).
  */
 export async function ensureAppUser() {
-  const { data: session } = await authServer.getSession();
+  if (!isNeonAuthConfigured()) return null;
+
+  const { data: session } = await getAuthServer().getSession();
   const email = session?.user?.email;
   if (!email) return null;
 
