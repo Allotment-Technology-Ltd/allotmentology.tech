@@ -1,6 +1,6 @@
 "use server";
 
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -92,11 +92,85 @@ async function loadOpportunityOrError(
     return { ok: false, error: "Invalid opportunity id." };
   }
   const db = getServerDb();
-  const [o] = await db
-    .select()
-    .from(opportunities)
-    .where(eq(opportunities.id, opportunityId))
-    .limit(1);
+  let o: typeof opportunities.$inferSelect | undefined;
+  try {
+    const [row] = await db
+      .select()
+      .from(opportunities)
+      .where(eq(opportunities.id, opportunityId))
+      .limit(1);
+    o = row;
+  } catch (e) {
+    const code =
+      (e as { code?: unknown })?.code ??
+      ((e as { cause?: { code?: unknown } })?.cause?.code ?? null);
+    if (code !== "42703") throw e;
+
+    // Legacy-schema fallback: fetch core columns only and pad newer fields.
+    const legacy = await db.execute<{
+      id: string;
+      title: string;
+      summary: string | null;
+      funder_name: string | null;
+      closes_at: Date | string | null;
+      status: (typeof opportunities.$inferSelect)["status"];
+      owner_user_id: string | null;
+      created_at: Date | string;
+      updated_at: Date | string;
+      grant_url: string | null;
+      eligibility_notes: string | null;
+      internal_notes: string | null;
+      product_fit_assessment_md: string | null;
+      estimated_value: string | null;
+      currency_code: string | null;
+    }>(sql`
+      select
+        o.id,
+        o.title,
+        o.summary,
+        o.funder_name,
+        o.closes_at,
+        o.status,
+        o.owner_user_id,
+        o.created_at,
+        o.updated_at,
+        o.grant_url,
+        o.eligibility_notes,
+        o.internal_notes,
+        o.product_fit_assessment_md,
+        o.estimated_value,
+        o.currency_code
+      from opportunities o
+      where o.id = ${opportunityId}
+      limit 1
+    `);
+    const lr = legacy.rows[0];
+    if (lr) {
+      o = {
+        id: lr.id,
+        title: lr.title,
+        summary: lr.summary,
+        funderName: lr.funder_name,
+        closesAt: lr.closes_at ? new Date(lr.closes_at) : null,
+        status: lr.status,
+        ownerUserId: lr.owner_user_id,
+        eligibilityNotes: lr.eligibility_notes,
+        internalNotes: lr.internal_notes,
+        estimatedValue: lr.estimated_value,
+        currencyCode: lr.currency_code ?? "GBP",
+        grantUrl: lr.grant_url,
+        productFitAssessmentMd: lr.product_fit_assessment_md,
+        mitchellBriefMd: null,
+        mitchellSectionDraftMd: null,
+        mitchellSectionFollowupMd: null,
+        mitchellQaQuestionMd: null,
+        mitchellQaNotesMd: null,
+        mitchellQaResponseMd: null,
+        createdAt: new Date(lr.created_at),
+        updatedAt: new Date(lr.updated_at),
+      };
+    }
+  }
   if (!o) {
     return { ok: false, error: "Opportunity not found." };
   }
