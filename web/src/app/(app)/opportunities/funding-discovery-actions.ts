@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -63,6 +63,20 @@ function cleanText(input: string | null | undefined, maxLen: number): string | n
   const cleaned = input.replace(/\u0000/g, "").trim();
   if (!cleaned) return null;
   return cleaned.slice(0, maxLen);
+}
+
+async function loadOpportunitiesColumnSet(db: ReturnType<typeof getServerDb>): Promise<Set<string>> {
+  const result = await db.execute(sql`
+    select column_name
+    from information_schema.columns
+    where table_schema = 'public' and table_name = 'opportunities'
+  `);
+  const rows = (result as { rows?: Array<{ column_name?: string }> }).rows ?? [];
+  return new Set(
+    rows
+      .map((r) => (typeof r.column_name === "string" ? r.column_name : null))
+      .filter((v): v is string => Boolean(v)),
+  );
 }
 
 function buildFallbackFundingQueries(userBrief: string): string[] {
@@ -402,10 +416,17 @@ export async function importFundingDiscoveryLeads(
     }
 
     const db = getServerDb();
-    const existing = await db
-      .select({ grantUrl: opportunities.grantUrl })
-      .from(opportunities)
-      .where(eq(opportunities.ownerUserId, userId));
+    const opportunitiesColumns = await loadOpportunitiesColumnSet(db);
+    if (!opportunitiesColumns.has("title")) {
+      return { ok: false, error: "Could not import: opportunities.title column missing." };
+    }
+    const existing =
+      opportunitiesColumns.has("grant_url") && opportunitiesColumns.has("owner_user_id")
+        ? await db
+            .select({ grantUrl: opportunities.grantUrl })
+            .from(opportunities)
+            .where(eq(opportunities.ownerUserId, userId))
+        : [];
 
     const existingNorm = new Set(
       existing
@@ -447,67 +468,41 @@ export async function importFundingDiscoveryLeads(
         .slice(0, 8000);
 
       try {
+        const values: Record<string, unknown> = { title };
+        if (opportunitiesColumns.has("summary")) values.summary = summary;
+        if (opportunitiesColumns.has("funder_name")) {
+          values.funderName = cleanText(lead.funderName, 255);
+        }
+        if (opportunitiesColumns.has("grant_url")) values.grantUrl = cleanText(url, 8000);
+        if (opportunitiesColumns.has("closes_at")) values.closesAt = parseClosesAt(lead.closesAtIso);
+        if (opportunitiesColumns.has("status")) values.status = "draft";
+        if (opportunitiesColumns.has("owner_user_id")) values.ownerUserId = userId;
+        if (opportunitiesColumns.has("eligibility_notes")) {
+          values.eligibilityNotes = cleanText(lead.eligibilityNotes, 8000);
+        }
+        if (opportunitiesColumns.has("internal_notes")) {
+          values.internalNotes = cleanText(internalNotes, 8000);
+        }
+        if (opportunitiesColumns.has("currency_code")) values.currencyCode = "GBP";
+        if (opportunitiesColumns.has("updated_at")) values.updatedAt = new Date();
+
         const [row] = await db
           .insert(opportunities)
-          .values({
-            title,
-            summary,
-            funderName: cleanText(lead.funderName, 255),
-            grantUrl: cleanText(url, 8000),
-            closesAt: parseClosesAt(lead.closesAtIso),
-            status: "draft",
-            ownerUserId: userId,
-            eligibilityNotes: cleanText(lead.eligibilityNotes, 8000),
-            internalNotes: cleanText(internalNotes, 8000),
-            currencyCode: "GBP",
-            updatedAt: new Date(),
-          })
+          .values(values as never)
           .returning({ id: opportunities.id });
-
-        if (row) {
-          importedIds.push(row.id);
-          existingNorm.add(url);
-        } else {
+        if (!row) {
           skippedInvalid += 1;
-        }
-      } catch (err) {
-        // Legacy-schema retry: some environments may be missing newer nullable columns.
-        // Fall back to core opportunity fields so imports still work.
-        try {
-          const [legacyRow] = await db
-            .insert(opportunities)
-            .values({
-              title,
-              summary,
-              funderName: cleanText(lead.funderName, 255),
-              closesAt: parseClosesAt(lead.closesAtIso),
-              status: "draft",
-              ownerUserId: userId,
-              updatedAt: new Date(),
-            })
-            .returning({ id: opportunities.id });
-
-          if (legacyRow) {
-            importedIds.push(legacyRow.id);
-            existingNorm.add(url);
-            console.warn("[funding-discovery] import used legacy insert fallback", {
-              url,
-            });
-            continue;
-          }
-        } catch (legacyErr) {
-          skippedInvalid += 1;
-          console.warn("[funding-discovery] import lead failed", {
-            url,
-            title: title.slice(0, 120),
-            error: err instanceof Error ? err.message : String(err),
-            legacyError:
-              legacyErr instanceof Error ? legacyErr.message : String(legacyErr),
-          });
           continue;
         }
-
+        importedIds.push(row.id);
+        existingNorm.add(url);
+      } catch (err) {
         skippedInvalid += 1;
+        console.warn("[funding-discovery] import lead failed", {
+          url,
+          title: title.slice(0, 120),
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 

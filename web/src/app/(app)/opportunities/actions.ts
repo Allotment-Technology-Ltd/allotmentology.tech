@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -39,6 +39,28 @@ import { DEFAULT_APPLICATION_FORMS_MD } from "@/lib/submission-packs/application
 import { runMitchellGrantIntake } from "./opportunity-ai-actions";
 
 export type FormState = { error: string | null };
+
+function isMissingColumnError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code =
+    (err as { code?: unknown }).code ??
+    ((err as { cause?: { code?: unknown } }).cause?.code ?? null);
+  return code === "42703";
+}
+
+async function loadOpportunitiesColumnSet(db: ReturnType<typeof getServerDb>): Promise<Set<string>> {
+  const result = await db.execute(sql`
+    select column_name
+    from information_schema.columns
+    where table_schema = 'public' and table_name = 'opportunities'
+  `);
+  const rows = (result as { rows?: Array<{ column_name?: string }> }).rows ?? [];
+  return new Set(
+    rows
+      .map((r) => (typeof r.column_name === "string" ? r.column_name : null))
+      .filter((v): v is string => Boolean(v)),
+  );
+}
 
 async function requireSessionUser() {
   const { data } = await getAuthServer().getSession();
@@ -135,6 +157,7 @@ export async function saveOpportunity(
   }
 
   const db = getServerDb();
+  const opportunitiesColumns = await loadOpportunitiesColumnSet(db);
   const closesAt = parsed.data.closesAt ? new Date(parsed.data.closesAt) : null;
   const row = {
     title: parsed.data.title,
@@ -167,15 +190,33 @@ export async function saveOpportunity(
   const mitchellAfterSave = formData.get("mitchellAfterSave") === "1";
 
   if (existingId) {
-    await db
-      .update(opportunities)
-      .set(row)
-      .where(eq(opportunities.id, existingId));
+    try {
+      await db
+        .update(opportunities)
+        .set(row)
+        .where(eq(opportunities.id, existingId));
+    } catch (e) {
+      if (!isMissingColumnError(e)) throw e;
+      // Schema-aware fallback: only set columns that exist in this environment.
+      const legacyUpdate: Record<string, unknown> = {};
+      if (opportunitiesColumns.has("title")) legacyUpdate.title = row.title;
+      if (opportunitiesColumns.has("summary")) legacyUpdate.summary = row.summary;
+      if (opportunitiesColumns.has("funder_name")) legacyUpdate.funderName = row.funderName;
+      if (opportunitiesColumns.has("closes_at")) legacyUpdate.closesAt = row.closesAt;
+      if (opportunitiesColumns.has("status")) legacyUpdate.status = row.status;
+      if (opportunitiesColumns.has("owner_user_id")) legacyUpdate.ownerUserId = row.ownerUserId;
+      if (opportunitiesColumns.has("updated_at")) legacyUpdate.updatedAt = row.updatedAt;
+
+      await db
+        .update(opportunities)
+        .set(legacyUpdate as never)
+        .where(eq(opportunities.id, existingId));
+    }
     revalidatePath("/opportunities");
     revalidatePath(`/opportunities/${existingId}`);
     revalidatePath(`/opportunities/${existingId}/edit`);
 
-    if (mitchellAfterSave && parsed.data.grantUrl) {
+    if (mitchellAfterSave && parsed.data.grantUrl && opportunitiesColumns.has("grant_url")) {
       await runMitchellGrantIntake(existingId);
     }
 
@@ -185,10 +226,49 @@ export async function saveOpportunity(
     redirect(`/opportunities/${existingId}`);
   }
 
-  const [inserted] = await db
-    .insert(opportunities)
-    .values(row)
-    .returning({ id: opportunities.id });
+  let inserted: { id: string } | undefined;
+  try {
+    const [created] = await db
+      .insert(opportunities)
+      .values(row)
+      .returning({ id: opportunities.id });
+    inserted = created;
+  } catch (e) {
+    if (!isMissingColumnError(e)) throw e;
+    // Schema-aware fallback: only insert columns that exist in this environment.
+    const legacyInsert: Record<string, unknown> = {};
+    if (opportunitiesColumns.has("title")) legacyInsert.title = row.title;
+    if (opportunitiesColumns.has("summary")) legacyInsert.summary = row.summary;
+    if (opportunitiesColumns.has("funder_name")) legacyInsert.funderName = row.funderName;
+    if (opportunitiesColumns.has("closes_at")) legacyInsert.closesAt = row.closesAt;
+    if (opportunitiesColumns.has("status")) legacyInsert.status = row.status;
+    if (opportunitiesColumns.has("eligibility_notes")) {
+      legacyInsert.eligibilityNotes = row.eligibilityNotes;
+    }
+    if (opportunitiesColumns.has("internal_notes")) {
+      legacyInsert.internalNotes = row.internalNotes;
+    }
+    if (opportunitiesColumns.has("estimated_value")) {
+      legacyInsert.estimatedValue = row.estimatedValue;
+    }
+    if (opportunitiesColumns.has("currency_code")) legacyInsert.currencyCode = row.currencyCode;
+    if (opportunitiesColumns.has("owner_user_id")) legacyInsert.ownerUserId = row.ownerUserId;
+    if (opportunitiesColumns.has("grant_url")) legacyInsert.grantUrl = row.grantUrl;
+    if (opportunitiesColumns.has("product_fit_assessment_md")) {
+      legacyInsert.productFitAssessmentMd = row.productFitAssessmentMd;
+    }
+    if (opportunitiesColumns.has("updated_at")) legacyInsert.updatedAt = row.updatedAt;
+
+    if (!("title" in legacyInsert)) {
+      return { error: "Could not create opportunity: schema missing title column." };
+    }
+
+    const [legacyRow] = await db
+      .insert(opportunities)
+      .values(legacyInsert as never)
+      .returning({ id: opportunities.id });
+    inserted = legacyRow;
+  }
 
   if (!inserted) {
     return { error: "Could not create opportunity." };
@@ -196,7 +276,7 @@ export async function saveOpportunity(
 
   revalidatePath("/opportunities");
 
-  if (parsed.data.grantUrl) {
+  if (parsed.data.grantUrl && opportunitiesColumns.has("grant_url")) {
     const mitchell = await runMitchellGrantIntake(inserted.id);
     if (!mitchell.ok) {
       console.warn("[saveOpportunity] Mitchell intake:", mitchell.error);
