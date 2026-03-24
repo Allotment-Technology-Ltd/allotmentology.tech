@@ -30,7 +30,7 @@ export async function runJsonModule<T>(ctx: JsonRunContext, opts: {
   inputSnapshot: Record<string, unknown>;
   temperature?: number;
   maxTokens?: number;
-  /** Override default constitution layering (e.g. Mitchell persona). */
+  /** Override default layered prompt (constitution + Mitchell voice). Rare. */
   buildSystemPrompt?: (moduleDirective: string) => string;
 }): Promise<{ value: T; logId: string }> {
   const build =

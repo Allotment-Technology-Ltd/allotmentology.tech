@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { runJsonModule } from "@/lib/ai/structured";
-import { buildMitchellSystemPrompt } from "@/lib/ai/mitchell";
 import {
   formatMaterialRequestsMarkdown,
   mitchellMaterialRequestSchema,
@@ -124,7 +123,6 @@ export async function runMitchellIntakeBrief(
   const { value, logId } = await runJsonModule(ctx, {
     moduleKind: "skill",
     moduleName: "mitchell-intake",
-    buildSystemPrompt: buildMitchellSystemPrompt,
     moduleDirective: `You are Mitchell finishing an intake pass after the system has already fetched the grant page, extracted fields, and run triage scores.
 
 Your job:

@@ -108,9 +108,15 @@ function trimApiBase(url: string): string {
   return url.trim().replace(/\/+$/, "");
 }
 
-/** Inferred when `validation` is missing (older catalog feeds). */
+/**
+ * Effective routing mode for BYOK validation.
+ * Restormel Keys (`CatalogProviderValidation.mode`) may be `"none"` meaning “infer from
+ * provider id”; we must not pass `"none"` through to validation (it is unsupported).
+ */
 export function catalogValidationMode(provider: CatalogProviderSummary): string {
-  const raw = provider.validation?.mode?.trim().toLowerCase().replace(/-/g, "_");
+  const normalized =
+    provider.validation?.mode?.trim().toLowerCase().replace(/-/g, "_") ?? "";
+  const raw = normalized === "none" ? "" : normalized;
   if (raw) return raw;
   if (provider.id === "openai") return "openai_compatible";
   if (provider.id === "anthropic" || provider.id === "google") return "native";

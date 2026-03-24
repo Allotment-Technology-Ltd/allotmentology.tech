@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { runJsonModule } from "@/lib/ai/structured";
-import { buildMitchellSystemPrompt } from "@/lib/ai/mitchell";
 import {
   formatMitchellMaterialKindLabel,
   mitchellMaterialRequestSchema,
@@ -113,7 +112,6 @@ export async function runMitchellSectionDraft(
   const { value, logId } = await runJsonModule(ctx, {
     moduleKind: "skill",
     moduleName: "mitchell-section-draft",
-    buildSystemPrompt: buildMitchellSystemPrompt,
     moduleDirective: `You are Mitchell drafting ONE application section on the user's behalf. Aim for **submission-winning** quality at first draft: clear, evidenced, aligned to the call — not generic "innovation" filler.
 
 Rules:

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   FUNDING_OPS_CONSTITUTION,
+  MITCHELL_VOICE_OVERLAY,
   NON_GENERIC_WRITING_GUARDRAILS,
 } from "@/lib/ai/constitution";
 import { AiNotConfiguredError, AiProviderError } from "@/lib/ai/errors";
@@ -96,6 +97,8 @@ export async function runCollateralWritingAid(
     const system = `${FUNDING_OPS_CONSTITUTION}
 
 ${NON_GENERIC_WRITING_GUARDRAILS}
+
+${MITCHELL_VOICE_OVERLAY}
 
 You are revising collateral stored in a funding-ops library (Markdown body).
 

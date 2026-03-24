@@ -6,7 +6,7 @@ alwaysApply: false
 
 # AI layer — skills & subagents
 
-- **Constitution:** all model calls must respect `src/lib/ai/constitution.ts` (blunt, skeptical, no fabrication, no auto-submit). Use `buildLayeredSystemPrompt()` via `runJsonModule` in `structured.ts`.
+- **Constitution:** all model calls must respect `src/lib/ai/constitution.ts` (blunt, skeptical, no fabrication, no auto-submit). Use `buildLayeredSystemPrompt()` via `runJsonModule` in `structured.ts` — it layers **Mitchell** as the default in-app voice (`MITCHELL_VOICE_OVERLAY`). Override `buildSystemPrompt` only for rare non-Mitchell experiments.
 - **New skill:** add `web/src/lib/ai/skills/<kebab-name>.ts` — export a Zod `*OutputSchema`, a typed `async function` that calls `runJsonModule()` with `moduleKind: "skill"` and `moduleName` matching the filename (e.g. `compress-to-limit`). Re-export from `skills/index.ts`.
 - **New subagent:** add `web/src/lib/ai/subagents/<kebab-name>.ts` — same pattern with `moduleKind: "subagent"`. Re-export from `subagents/index.ts`.
 - **Return shape:** wrap outputs with `asGenerated()` from `types.ts` so callers get `provenance`, `logId`, `model`.
