@@ -28,6 +28,78 @@ const primaryBtn =
 const dangerBtn =
   "inline-flex items-center justify-center rounded-md border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200 hover:bg-red-950/60 disabled:opacity-50";
 
+type ProjectFocus = "restormel" | "sophia" | "both" | "other";
+type CompanyStage = "idea" | "pre_seed" | "seed" | "growth" | "research";
+type Geography = "uk" | "eu" | "us" | "global";
+type FundingUrgency = "immediate" | "quarter" | "six_months" | "explore";
+
+const NEED_OPTIONS = [
+  { id: "cash_grants", label: "Cash grants" },
+  { id: "cloud_credits", label: "Cloud / compute credits" },
+  { id: "api_credits", label: "AI API credits" },
+  { id: "rd_support", label: "R&D support or vouchers" },
+  { id: "accelerators", label: "Accelerators / incubators" },
+] as const;
+
+function composeDiscoveryBrief(input: {
+  projectFocus: ProjectFocus | "";
+  projectName: string;
+  repoUrl: string;
+  companyStage: CompanyStage;
+  geography: Geography;
+  fundingUrgency: FundingUrgency;
+  needs: string[];
+  additionalContext: string;
+}): string {
+  const project =
+    input.projectFocus === "restormel"
+      ? "Restormel Keys"
+      : input.projectFocus === "sophia"
+        ? "SOPHIA"
+        : input.projectFocus === "both"
+          ? "Both Restormel Keys and SOPHIA"
+          : input.projectName.trim() || "Other project";
+
+  const stageMap: Record<CompanyStage, string> = {
+    idea: "idea/MVP",
+    pre_seed: "pre-seed",
+    seed: "seed",
+    growth: "growth",
+    research: "research/prototype",
+  };
+  const geoMap: Record<Geography, string> = {
+    uk: "United Kingdom",
+    eu: "Europe",
+    us: "United States",
+    global: "Global",
+  };
+  const urgencyMap: Record<FundingUrgency, string> = {
+    immediate: "Immediate (0-2 months)",
+    quarter: "This quarter (2-4 months)",
+    six_months: "Within 6 months",
+    explore: "Exploratory / longlist",
+  };
+  const needs =
+    input.needs.length > 0
+      ? input.needs.join(", ")
+      : "cash grants, credits, and relevant non-dilutive support";
+
+  return [
+    `Project focus: ${project}.`,
+    input.repoUrl.trim() ? `Project repository URL: ${input.repoUrl.trim()}.` : null,
+    `Company stage: ${stageMap[input.companyStage]}.`,
+    `Target geography: ${geoMap[input.geography]}.`,
+    `Funding urgency: ${urgencyMap[input.fundingUrgency]}.`,
+    `Priority funding needs: ${needs}.`,
+    "Task: find live funding programmes (grants, credits, accelerators, research schemes) aligned with this profile and provide high-signal programme pages.",
+    input.additionalContext.trim()
+      ? `Additional context: ${input.additionalContext.trim()}`
+      : null,
+  ]
+    .filter((x): x is string => Boolean(x))
+    .join("\n");
+}
+
 export function FundingDiscoveryClient(props: {
   tavilyConfigured: boolean;
   /** Non-null when the server could not read saved briefs (e.g. missing migration). */
@@ -41,6 +113,15 @@ export function FundingDiscoveryClient(props: {
   const [savePending, startSave] = useTransition();
   const [deletePending, startDelete] = useTransition();
 
+  const [projectFocus, setProjectFocus] = useState<ProjectFocus | "">(
+    props.initialBrief ? "both" : "",
+  );
+  const [projectName, setProjectName] = useState("");
+  const [repoUrl, setRepoUrl] = useState("");
+  const [companyStage, setCompanyStage] = useState<CompanyStage>("seed");
+  const [geography, setGeography] = useState<Geography>("uk");
+  const [fundingUrgency, setFundingUrgency] = useState<FundingUrgency>("quarter");
+  const [needs, setNeeds] = useState<string[]>(["cash_grants", "cloud_credits"]);
   const [brief, setBrief] = useState(props.initialBrief?.briefText ?? "");
   const [selectedBriefId, setSelectedBriefId] = useState<string | null>(
     props.initialBrief?.id ?? null,
@@ -55,6 +136,21 @@ export function FundingDiscoveryClient(props: {
     () => (run && run.ok ? run.leads : ([] as FundingDiscoveryLead[])),
     [run],
   );
+  const composedBrief = useMemo(
+    () =>
+      composeDiscoveryBrief({
+        projectFocus,
+        projectName,
+        repoUrl,
+        companyStage,
+        geography,
+        fundingUrgency,
+        needs,
+        additionalContext: brief,
+      }),
+    [brief, companyStage, fundingUrgency, geography, needs, projectFocus, projectName, repoUrl],
+  );
+  const canRunDiscovery = projectFocus !== "";
 
   const toggle = useCallback((i: number) => {
     setSelected((s) => ({ ...s, [i]: !s[i] }));
@@ -72,8 +168,12 @@ export function FundingDiscoveryClient(props: {
     setImportMsg(null);
     setBriefFeedback(null);
     setRun(null);
+    if (!canRunDiscovery) {
+      setBriefFeedback("Select which project the funding is for.");
+      return;
+    }
     start(async () => {
-      const r = await runFundingDiscovery(brief, {
+      const r = await runFundingDiscovery(composedBrief, {
         briefId: selectedBriefId ?? undefined,
       });
       setRun(r);
@@ -114,6 +214,9 @@ export function FundingDiscoveryClient(props: {
       if (r.skippedDuplicates > 0) {
         parts.push(`Skipped ${r.skippedDuplicates} duplicate URL(s) already in your pipeline.`);
       }
+      if (r.skippedInvalid > 0) {
+        parts.push(`Skipped ${r.skippedInvalid} item(s) due to invalid or incompatible source data.`);
+      }
       setImportMsg(parts.join(" "));
       if (r.importedIds.length > 0) {
         router.push("/opportunities?sort=updated");
@@ -125,11 +228,15 @@ export function FundingDiscoveryClient(props: {
 
   const onSaveBrief = () => {
     setBriefFeedback(null);
+    if (!canRunDiscovery) {
+      setBriefFeedback("Select which project the funding is for.");
+      return;
+    }
     startSave(async () => {
       const r = await saveFundingDiscoveryBrief({
         id: selectedBriefId ?? undefined,
         label: saveLabel.trim() || "Untitled brief",
-        briefText: brief,
+        briefText: composedBrief,
       });
       if (!r.ok) {
         setBriefFeedback(r.error);
@@ -189,10 +296,10 @@ export function FundingDiscoveryClient(props: {
         <MitchellAvatar size={48} />
         <div className="min-w-0 flex-1 space-y-2">
           <p className="text-sm leading-relaxed text-zinc-400">
-            Describe your company, geography, and what you need (grants, cloud credits, marketing
-            funds, etc.). Mitchell expands that into several web searches, fetches plain text from
-            the top programme pages where possible, then structures results into draft opportunities.
-            Saved briefs let you re-run the same search later (bookmark{" "}
+            Answer a short set of questions so discovery is more targeted. Mitchell expands this into
+            focused searches, fetches plain text from top programme pages where possible, then
+            structures results into draft opportunities. Saved briefs let you re-run the same search
+            later (bookmark{" "}
             <code className="rounded bg-zinc-900 px-1 text-zinc-300">/opportunities/discover?brief=…</code>
             ). Automated schedules are not wired yet — use a recurring calendar reminder if you need
             a nudge to re-run.
@@ -221,11 +328,13 @@ export function FundingDiscoveryClient(props: {
                 if (id) {
                   const b = props.savedBriefs.find((x) => x.id === id);
                   if (b) {
+                    setProjectFocus("both");
                     setBrief(b.briefText);
                     setSaveLabel(b.label);
                     router.replace(`/opportunities/discover?brief=${encodeURIComponent(id)}`);
                   }
                 } else {
+                  setProjectFocus("");
                   router.replace("/opportunities/discover");
                 }
               }}
@@ -258,7 +367,7 @@ export function FundingDiscoveryClient(props: {
             <button
               type="button"
               className={primaryBtn}
-              disabled={savePending || brief.trim().length < 20}
+              disabled={savePending || !canRunDiscovery}
               onClick={onSaveBrief}
             >
               {savePending ? "Saving…" : selectedBriefId ? "Update saved brief" : "Save as new brief"}
@@ -277,22 +386,145 @@ export function FundingDiscoveryClient(props: {
         </div>
       </div>
 
-      <div>
-        <label className={labelClass} htmlFor="fd-brief">
-          Funding brief
-        </label>
-        <textarea
-          id="fd-brief"
-          rows={6}
-          className={inputClass}
-          value={brief}
-          onChange={(e) => setBrief(e.target.value)}
-          placeholder="e.g. UK B2B SaaS, seed stage, looking for R&D grants, AWS/GCP credits, and any startup marketing or brand programmes open in 2025."
-        />
+      <div className="grid gap-4 rounded-lg border border-zinc-800 bg-zinc-950/30 p-4 md:grid-cols-2">
+        <div>
+          <label className={labelClass} htmlFor="fd-project-focus">
+            Which project is the funding for?
+          </label>
+          <select
+            id="fd-project-focus"
+            className={inputClass}
+            value={projectFocus}
+            onChange={(e) => setProjectFocus(e.target.value as ProjectFocus | "")}
+          >
+            <option value="">Select project…</option>
+            <option value="restormel">Restormel Keys</option>
+            <option value="sophia">SOPHIA</option>
+            <option value="both">Both</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        {projectFocus === "other" ? (
+          <div>
+            <label className={labelClass} htmlFor="fd-project-name">
+              Project name
+            </label>
+            <input
+              id="fd-project-name"
+              className={inputClass}
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              placeholder="e.g. New operator tool"
+            />
+          </div>
+        ) : null}
+        <div>
+          <label className={labelClass} htmlFor="fd-repo-url">
+            Project repository URL (optional)
+          </label>
+          <input
+            id="fd-repo-url"
+            className={inputClass}
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+            placeholder="https://github.com/org/repo"
+          />
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="fd-stage">
+            Company stage
+          </label>
+          <select
+            id="fd-stage"
+            className={inputClass}
+            value={companyStage}
+            onChange={(e) => setCompanyStage(e.target.value as CompanyStage)}
+          >
+            <option value="idea">Idea/MVP</option>
+            <option value="pre_seed">Pre-seed</option>
+            <option value="seed">Seed</option>
+            <option value="growth">Growth</option>
+            <option value="research">Research/prototype</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="fd-geo">
+            Primary geography
+          </label>
+          <select
+            id="fd-geo"
+            className={inputClass}
+            value={geography}
+            onChange={(e) => setGeography(e.target.value as Geography)}
+          >
+            <option value="uk">UK</option>
+            <option value="eu">EU</option>
+            <option value="us">US</option>
+            <option value="global">Global</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelClass} htmlFor="fd-urgency">
+            Funding timeline
+          </label>
+          <select
+            id="fd-urgency"
+            className={inputClass}
+            value={fundingUrgency}
+            onChange={(e) => setFundingUrgency(e.target.value as FundingUrgency)}
+          >
+            <option value="immediate">Immediate (0-2 months)</option>
+            <option value="quarter">This quarter</option>
+            <option value="six_months">Within 6 months</option>
+            <option value="explore">Exploratory</option>
+          </select>
+        </div>
+        <div className="md:col-span-2">
+          <p className={`${labelClass} mb-2`}>What do you need most? (pick 1-3)</p>
+          <div className="flex flex-wrap gap-3">
+            {NEED_OPTIONS.map((opt) => (
+              <label
+                key={opt.id}
+                className="inline-flex items-center gap-2 rounded-md border border-zinc-700 px-3 py-2 text-sm text-zinc-300"
+              >
+                <input
+                  type="checkbox"
+                  checked={needs.includes(opt.id)}
+                  onChange={(e) => {
+                    setNeeds((prev) =>
+                      e.target.checked
+                        ? [...prev, opt.id].slice(0, 3)
+                        : prev.filter((x) => x !== opt.id),
+                    );
+                  }}
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="md:col-span-2">
+          <label className={labelClass} htmlFor="fd-brief">
+            Additional context (optional)
+          </label>
+          <textarea
+            id="fd-brief"
+            rows={4}
+            className={inputClass}
+            value={brief}
+            onChange={(e) => setBrief(e.target.value)}
+            placeholder="Anything specific to include or exclude, e.g. preferred programmes, hard constraints, or known no-go areas."
+          />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <button type="button" className={primaryBtn} disabled={pending} onClick={onDiscover}>
+        <button
+          type="button"
+          className={primaryBtn}
+          disabled={pending || !canRunDiscovery}
+          onClick={onDiscover}
+        >
           {pending ? "Searching…" : "Search & structure with Mitchell"}
         </button>
       </div>

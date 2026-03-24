@@ -58,6 +58,13 @@ function parseClosesAt(iso: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function cleanText(input: string | null | undefined, maxLen: number): string | null {
+  if (typeof input !== "string") return null;
+  const cleaned = input.replace(/\u0000/g, "").trim();
+  if (!cleaned) return null;
+  return cleaned.slice(0, maxLen);
+}
+
 function buildFallbackFundingQueries(userBrief: string): string[] {
   const normalized = userBrief.toLowerCase().replace(/\s+/g, " ");
   const geo =
@@ -364,7 +371,12 @@ export async function runFundingDiscovery(
 const importLeadsSchema = z.array(fundingDiscoveryLeadSchema).min(1).max(15);
 
 export type FundingDiscoveryImportResult =
-  | { ok: true; importedIds: string[]; skippedDuplicates: number }
+  | {
+      ok: true;
+      importedIds: string[];
+      skippedDuplicates: number;
+      skippedInvalid: number;
+    }
   | { ok: false; error: string };
 
 /**
@@ -404,14 +416,26 @@ export async function importFundingDiscoveryLeads(
 
     const importedIds: string[] = [];
     let skippedDuplicates = 0;
+    let skippedInvalid = 0;
 
     for (const lead of leads) {
-      const url = normalizeResultUrl(lead.grantUrl);
+      let url: string;
+      try {
+        url = normalizeResultUrl(lead.grantUrl);
+      } catch {
+        skippedInvalid += 1;
+        continue;
+      }
       if (existingNorm.has(url)) {
         skippedDuplicates += 1;
         continue;
       }
-      existingNorm.add(url);
+      const title = cleanText(lead.title, 4000);
+      const summary = cleanText(lead.summary, 8000);
+      if (!title || !summary) {
+        skippedInvalid += 1;
+        continue;
+      }
 
       const internalNotes = [
         "Imported via Mitchell funding discovery.",
@@ -419,28 +443,41 @@ export async function importFundingDiscoveryLeads(
         lead.tags.length ? `Tags: ${lead.tags.join(", ")}.` : null,
       ]
         .filter(Boolean)
-        .join(" ");
+        .join(" ")
+        .slice(0, 8000);
 
-      const [row] = await db
-        .insert(opportunities)
-        .values({
-          title: lead.title.slice(0, 4000),
-          summary: lead.summary,
-          funderName: lead.funderName ? lead.funderName.slice(0, 255) : null,
-          grantUrl: url,
-          closesAt: parseClosesAt(lead.closesAtIso),
-          status: "draft",
-          ownerUserId: userId,
-          eligibilityNotes: lead.eligibilityNotes?.trim()
-            ? lead.eligibilityNotes.trim().slice(0, 8000)
-            : null,
-          internalNotes: internalNotes.slice(0, 8000),
-          currencyCode: "GBP",
-          updatedAt: new Date(),
-        })
-        .returning({ id: opportunities.id });
+      try {
+        const [row] = await db
+          .insert(opportunities)
+          .values({
+            title,
+            summary,
+            funderName: cleanText(lead.funderName, 255),
+            grantUrl: cleanText(url, 8000),
+            closesAt: parseClosesAt(lead.closesAtIso),
+            status: "draft",
+            ownerUserId: userId,
+            eligibilityNotes: cleanText(lead.eligibilityNotes, 8000),
+            internalNotes: cleanText(internalNotes, 8000),
+            currencyCode: "GBP",
+            updatedAt: new Date(),
+          })
+          .returning({ id: opportunities.id });
 
-      if (row) importedIds.push(row.id);
+        if (row) {
+          importedIds.push(row.id);
+          existingNorm.add(url);
+        } else {
+          skippedInvalid += 1;
+        }
+      } catch (err) {
+        skippedInvalid += 1;
+        console.warn("[funding-discovery] import lead failed", {
+          url,
+          title: title.slice(0, 120),
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
 
     revalidatePath("/opportunities");
@@ -448,7 +485,7 @@ export async function importFundingDiscoveryLeads(
       revalidatePath(`/opportunities/${id}`);
     }
 
-    return { ok: true, importedIds, skippedDuplicates };
+    return { ok: true, importedIds, skippedDuplicates, skippedInvalid };
   } catch (e) {
     return {
       ok: false,
