@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Mitchell (Allotment)",
+  "version": "0.1.0",
+  "description": "Fill funding application fields using Mitchell Q&A from your Allotment workspace.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Mitchell — use Alt+Shift+M or set options"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "mitchell-ask": {
+      "suggested_key": {
+        "default": "Alt+Shift+M",
+        "mac": "Alt+Shift+M"
+      },
+      "description": "Ask Mitchell (uses focused text field)"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

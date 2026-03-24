@@ -57,7 +57,7 @@ export default function DashboardPage() {
         <p className="font-medium text-zinc-200">AI in this workspace</p>
         <p className="mt-1 leading-relaxed">
           <strong className="font-medium text-zinc-300">Mitchell</strong> is the grant writer:
-          intake (angle, risks, scaffold pointers) and section drafts built for assessors — on
+          intake (angle, risks, scaffold pointers) and Q&amp;A answers for form questions — on
           each{" "}
           <Link href="/opportunities" className="text-sky-400 underline-offset-2 hover:text-sky-300 hover:underline">
             opportunity

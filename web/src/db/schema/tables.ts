@@ -58,6 +58,12 @@ export const opportunities = pgTable("opportunities", {
   mitchellSectionDraftMd: text("mitchell_section_draft_md"),
   /** Blanks, material asks, and next steps for that draft (markdown) */
   mitchellSectionFollowupMd: text("mitchell_section_followup_md"),
+  /** Mitchell Q&A: pasted application question */
+  mitchellQaQuestionMd: text("mitchell_qa_question_md"),
+  /** Mitchell Q&A: user notes alongside the question */
+  mitchellQaNotesMd: text("mitchell_qa_notes_md"),
+  /** Mitchell Q&A: generated answer (markdown) */
+  mitchellQaResponseMd: text("mitchell_qa_response_md"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -306,6 +312,41 @@ export const userAiProviderKeys = pgTable("user_ai_provider_keys", {
   apiKeyStored: text("api_key_stored").notNull(),
   isDefault: boolean("is_default").notNull().default(false),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/**
+ * Opaque tokens for the Mitchell browser extension (Bearer auth).
+ * Only a SHA-256 hash of the secret is stored; prefix identifies rows in the UI.
+ */
+export const browserAccessTokens = pgTable("browser_access_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  tokenPrefix: varchar("token_prefix", { length: 16 }).notNull(),
+  label: varchar("label", { length: 255 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+});
+
+/** Saved “Discover funding” briefs per user (reuse + last-run timestamp). */
+export const fundingDiscoveryBriefs = pgTable("funding_discovery_briefs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  label: varchar("label", { length: 255 }).notNull(),
+  briefText: text("brief_text").notNull(),
+  lastRunAt: timestamp("last_run_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

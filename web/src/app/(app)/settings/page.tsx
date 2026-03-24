@@ -31,6 +31,17 @@ export default function SettingsPage() {
         </li>
         <li>
           <Link
+            href="/settings/browser-extension"
+            className="font-medium text-sky-400 hover:text-sky-300 hover:underline"
+          >
+            Browser extension (Mitchell)
+          </Link>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            Tokens for the Mitchell extension — Q&A on funding sites from your workspace
+          </p>
+        </li>
+        <li>
+          <Link
             href="/account/settings"
             className="font-medium text-sky-400 hover:text-sky-300 hover:underline"
           >

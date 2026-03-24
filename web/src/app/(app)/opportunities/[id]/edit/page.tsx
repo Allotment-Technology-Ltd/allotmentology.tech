@@ -21,7 +21,7 @@ import {
   type ScoreFormInitial,
 } from "../../opportunity-detail-forms";
 import { OpportunityFormClient } from "../../opportunity-form-client";
-import { MitchellSectionDraftPanel } from "../../mitchell-section-draft-client";
+import { MitchellQaPanel } from "../../mitchell-qa-panel";
 import { OpportunityMitchellIntakeButton } from "../../opportunity-edit-ai-client";
 import { ScoreTriageCard } from "../../score-triage-card";
 
@@ -163,24 +163,29 @@ export default async function EditOpportunityPage({
         ) : null}
       </section>
 
-      <section className={sectionClass} id="mitchell-draft">
+      <section className={sectionClass} id="mitchell-qa">
         <div className="flex flex-wrap items-center gap-3">
           <MitchellAvatar size={44} />
-          <h2 className={sectionTitle}>Mitchell — draft a section</h2>
+          <h2 className={sectionTitle}>Mitchell — question &amp; answer</h2>
         </div>
-        <MitchellSectionDraftPanel
+        <p className="text-sm text-zinc-500">
+          Paste a form question, add notes, and generate a draft answer grounded in this
+          opportunity, knowledge links, collateral, and your writing style.
+        </p>
+        <MitchellQaPanel
+          key={`mitchell-qa-${o.updatedAt.toISOString()}`}
           opportunityId={id}
-          initialDraftMd={o.mitchellSectionDraftMd ?? null}
-          initialFollowupMd={o.mitchellSectionFollowupMd ?? null}
+          initialQuestion={o.mitchellQaQuestionMd ?? null}
+          initialNotes={o.mitchellQaNotesMd ?? null}
+          initialResponse={o.mitchellQaResponseMd ?? null}
         />
       </section>
 
       <section className={sectionClass} id="knowledge">
         <h2 className={sectionTitle}>Knowledge links</h2>
         <p className="text-sm text-zinc-500">
-          Link LinkedIn, CVs, portfolios, or past applications here so Mitchell can use
-          them when drafting. You can also paste one-off text in the draft panel
-          (not stored).
+          Link LinkedIn, CVs, portfolios, or past applications here so Mitchell can use them
+          when answering application questions.
         </p>
         {detail.knowledge.length === 0 ? (
           <p className="text-sm text-zinc-500">No linked materials yet.</p>

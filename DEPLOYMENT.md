@@ -98,6 +98,8 @@ npm run db:seed
 
 If unset, the app runs; AI server actions return a clear “not configured” message. If a user saves BYOK in the UI, that configuration takes precedence over shared environment variables for that user’s AI calls.
 
+**Tavily (optional — “Discover funding”):** Set `TAVILY_API_KEY` in `web/.env` / Vercel so **Opportunities → Discover funding** can run web search before Mitchell structures results into draft opportunities. This key is **not** your LLM key; obtain it from [Tavily](https://tavily.com). Without it, the discover page explains that web search is not configured.
+
 **BYOK provider/model catalog (split of responsibilities):**
 
 - **Restormel Keys** owns catalog contract, patch path, and (in the SDK) helpers such as `fetchCanonicalCatalogWithFallback` and, when published, `filterCanonicalCatalogForViability`.

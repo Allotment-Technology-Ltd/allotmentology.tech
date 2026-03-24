@@ -155,8 +155,8 @@ export function CollateralFormClient(props: {
           default key (or server env AI when no key). The host, key, and model id must match
           the same vendor (e.g. DeepSeek: base <code className="rounded bg-zinc-800 px-1">https://api.deepseek.com/v1</code>, model{" "}
           <code className="rounded bg-zinc-800 px-1">deepseek-chat</code>).{" "}
-          <strong className="font-medium text-zinc-400">Mitchell</strong> (grant intake &amp; section
-          drafts) runs on each{" "}
+          <strong className="font-medium text-zinc-400">Mitchell</strong> (grant intake &amp; Q&amp;A)
+          runs on each{" "}
           <Link href="/opportunities" className="text-sky-400/90 underline hover:text-sky-300">
             Opportunity
           </Link>

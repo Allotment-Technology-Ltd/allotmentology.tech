@@ -45,3 +45,22 @@ export {
   runMitchellSectionDraft,
   type MitchellSectionDraftOutput,
 } from "./mitchell-section-draft";
+export {
+  mitchellQaOutputSchema,
+  runMitchellQa,
+  type MitchellQaOutput,
+  type MitchellQaStyleProfile,
+} from "./mitchell-qa";
+export {
+  fundingSearchQueryExpansionOutputSchema,
+  runFundingSearchQueryExpansion,
+  type FundingSearchQueryExpansionOutput,
+} from "./funding-search-query-expansion";
+export {
+  fundingDiscoveryLeadSchema,
+  mitchellFundingDiscoveryOutputSchema,
+  runMitchellFundingDiscovery,
+  type FundingDiscoveryLead,
+  type MitchellFundingDiscoveryOutput,
+  type TavilyResultInput,
+} from "./mitchell-funding-discovery";

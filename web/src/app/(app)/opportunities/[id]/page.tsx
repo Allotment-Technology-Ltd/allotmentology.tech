@@ -131,7 +131,7 @@ export default async function OpportunityDetailPage({
           [
             ["#overview", "Overview"],
             ["#mitchell", "Mitchell"],
-            ["#mitchell-draft", "Section draft"],
+            ["#mitchell-qa", "Q&A"],
             ["#eligibility", "Eligibility"],
             ["#notes", "Notes"],
             ["#scoring", "Scoring"],
@@ -217,39 +217,45 @@ export default async function OpportunityDetailPage({
         )}
       </section>
 
-      <section id="mitchell-draft" className={sectionClass}>
+      <section id="mitchell-qa" className={sectionClass}>
         <div className="flex flex-wrap items-center gap-3">
           <MitchellAvatar size={44} />
-          <h2 className={sectionTitle}>Section draft</h2>
+          <h2 className={sectionTitle}>Question &amp; answer</h2>
         </div>
         <p className="text-sm text-zinc-500">
-          First-pass copy with win themes, QC, and placeholders — generate from{" "}
-          <Link href={`/opportunities/${id}/edit#mitchell-draft`} className="text-sky-400 hover:underline">
-            Edit → Mitchell — draft a section
+          Paste a form question and generate a draft answer from{" "}
+          <Link href={`/opportunities/${id}/edit#mitchell-qa`} className="text-sky-400 hover:underline">
+            Edit → Mitchell — question &amp; answer
           </Link>
           .
         </p>
-        {o.mitchellSectionDraftMd?.trim() ? (
+        {o.mitchellQaResponseMd?.trim() ? (
           <div className="mt-3 space-y-4">
-            <div className="rounded-md border border-zinc-800 bg-zinc-950/50 p-4 text-sm text-zinc-200">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                Draft
-              </p>
-              <MarkdownPreview markdown={o.mitchellSectionDraftMd} />
-            </div>
-            {o.mitchellSectionFollowupMd?.trim() ? (
-              <div className="rounded-md border border-amber-900/40 bg-amber-950/20 p-4 text-sm text-zinc-200">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-200/80">
-                  Win themes, QC, blanks &amp; materials
+            {o.mitchellQaQuestionMd?.trim() ? (
+              <div className="rounded-md border border-zinc-800 bg-zinc-950/50 p-4 text-sm text-zinc-200">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  Question
                 </p>
-                <MarkdownPreview markdown={o.mitchellSectionFollowupMd} />
+                <p className="whitespace-pre-wrap text-zinc-300">{o.mitchellQaQuestionMd}</p>
               </div>
             ) : null}
+            {o.mitchellQaNotesMd?.trim() ? (
+              <div className="rounded-md border border-zinc-800 bg-zinc-950/50 p-4 text-sm text-zinc-200">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  Notes
+                </p>
+                <p className="whitespace-pre-wrap text-zinc-300">{o.mitchellQaNotesMd}</p>
+              </div>
+            ) : null}
+            <div className="rounded-md border border-zinc-800 bg-zinc-950/50 p-4 text-sm text-zinc-200">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Response
+              </p>
+              <MarkdownPreview markdown={o.mitchellQaResponseMd} />
+            </div>
           </div>
         ) : (
-          <p className="text-sm text-zinc-500">
-            No section draft yet.
-          </p>
+          <p className="text-sm text-zinc-500">No Q&amp;A response yet.</p>
         )}
       </section>
 

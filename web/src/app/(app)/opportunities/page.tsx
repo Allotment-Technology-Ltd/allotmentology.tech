@@ -46,12 +46,20 @@ export default async function OpportunitiesPage({
             then deadline). Filter by status or search.
           </p>
         </div>
-        <Link
-          href="/opportunities/new"
-          className="inline-flex items-center justify-center rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
-        >
-          New opportunity
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/opportunities/discover"
+            className="inline-flex items-center justify-center rounded-md border border-zinc-600 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
+          >
+            Discover funding
+          </Link>
+          <Link
+            href="/opportunities/new"
+            className="inline-flex items-center justify-center rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+          >
+            New opportunity
+          </Link>
+        </div>
       </div>
 
       <form

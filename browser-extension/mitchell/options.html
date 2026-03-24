@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mitchell extension</title>
+    <style>
+      :root {
+        font-family: system-ui, sans-serif;
+        background: #09090b;
+        color: #e4e4e7;
+      }
+      body {
+        max-width: 40rem;
+        margin: 2rem auto;
+        padding: 0 1rem 3rem;
+      }
+      label {
+        display: block;
+        margin-top: 1rem;
+        font-size: 0.85rem;
+        color: #a1a1aa;
+      }
+      input,
+      textarea {
+        width: 100%;
+        margin-top: 0.35rem;
+        padding: 0.5rem 0.65rem;
+        border-radius: 0.375rem;
+        border: 1px solid #3f3f46;
+        background: #18181b;
+        color: #fafafa;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+      }
+      textarea {
+        min-height: 4rem;
+        resize: vertical;
+      }
+      button {
+        margin-top: 1.25rem;
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        border: 1px solid #52525b;
+        background: #27272a;
+        color: #fafafa;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #3f3f46;
+      }
+      p.hint {
+        font-size: 0.8rem;
+        color: #71717a;
+        margin-top: 0.35rem;
+      }
+      p.status {
+        margin-top: 1rem;
+        font-size: 0.85rem;
+        color: #22c55e;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="font-size: 1.25rem">Mitchell extension</h1>
+    <p class="hint">
+      Create a token under your app: Settings → Browser extension. Use the opportunity id from the
+      URL <code>/opportunities/&lt;uuid&gt;</code>.
+    </p>
+
+    <label for="baseUrl">API base URL (no trailing slash)</label>
+    <input id="baseUrl" type="url" placeholder="https://your-app.vercel.app" autocomplete="off" />
+    <p class="hint">Same origin you use to sign in (see Settings page when logged in).</p>
+
+    <label for="token">Bearer token</label>
+    <input id="token" type="password" autocomplete="off" spellcheck="false" />
+
+    <label for="opportunityId">Opportunity id (UUID)</label>
+    <input id="opportunityId" type="text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" spellcheck="false" />
+
+    <label for="notes">Default notes (optional)</label>
+    <textarea id="notes" placeholder="Tone, word limits, must-mentions…"></textarea>
+
+    <button type="button" id="save">Save</button>
+    <p id="status" class="status" hidden>Saved.</p>
+
+    <script src="options.js"></script>
+  </body>
+</html>

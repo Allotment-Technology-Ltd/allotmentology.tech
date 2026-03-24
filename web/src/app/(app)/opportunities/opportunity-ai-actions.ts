@@ -10,6 +10,8 @@ import {
   opportunities,
   opportunityKnowledgeAssets,
   opportunityScores,
+  writingStyleProfiles,
+  writingStyleSamples,
 } from "@/db/schema/tables";
 import { AiNotConfiguredError, AiParseError, AiProviderError } from "@/lib/ai/errors";
 import { logAiProviderErrorForRoute } from "@/lib/ai/log-provider-failure";
@@ -30,9 +32,9 @@ import {
   runMitchellIntakeBrief,
 } from "@/lib/ai/skills/mitchell-intake";
 import {
-  formatMitchellSectionFollowupMd,
-  runMitchellSectionDraft as runMitchellSectionDraftSkill,
-} from "@/lib/ai/skills/mitchell-section-draft";
+  runMitchellQa,
+  type MitchellQaStyleProfile,
+} from "@/lib/ai/skills/mitchell-qa";
 import { runOpportunityFullScoring } from "@/lib/ai/skills/opportunity-full-scoring";
 import { DEFAULT_APPLICATION_FORMS_MD } from "@/lib/submission-packs/application-forms-template";
 import { detectScopeConflict } from "@/lib/ai/skills/detect-scope-conflict";
@@ -320,6 +322,40 @@ async function loadKnowledgeForOpportunity(opportunityId: string) {
     .orderBy(desc(opportunityKnowledgeAssets.priority), asc(knowledgeAssets.title));
 }
 
+async function loadWritingStyleBundleForOwner(
+  ownerUserId: string | null,
+): Promise<MitchellQaStyleProfile | null> {
+  if (!ownerUserId) return null;
+  const db = getServerDb();
+  const [profile] = await db
+    .select({
+      id: writingStyleProfiles.id,
+      voiceDescription: writingStyleProfiles.voiceDescription,
+      styleGuardrailsMd: writingStyleProfiles.styleGuardrailsMd,
+      bannedPhrases: writingStyleProfiles.bannedPhrases,
+      preferredStructure: writingStyleProfiles.preferredStructure,
+    })
+    .from(writingStyleProfiles)
+    .where(eq(writingStyleProfiles.ownerUserId, ownerUserId))
+    .limit(1);
+  if (!profile) return null;
+  const samples = await db
+    .select({
+      title: writingStyleSamples.title,
+      sampleText: writingStyleSamples.sampleText,
+    })
+    .from(writingStyleSamples)
+    .where(eq(writingStyleSamples.profileId, profile.id))
+    .limit(5);
+  return {
+    voiceDescription: profile.voiceDescription,
+    styleGuardrailsMd: profile.styleGuardrailsMd,
+    bannedPhrases: profile.bannedPhrases,
+    preferredStructure: profile.preferredStructure,
+    samples,
+  };
+}
+
 function scoreDim(n: number | null | undefined, fallback: number): number {
   if (n == null || n < 1 || n > 5) return fallback;
   return n;
@@ -436,32 +472,30 @@ export async function enrichOpportunityFromGrantUrl(
   }
 }
 
-const mitchellSectionDraftParamsSchema = z.object({
-  sectionGoal: z
+const mitchellQaParamsSchema = z.object({
+  question: z
     .string()
     .trim()
-    .min(3, "Say what section or question Mitchell should draft.")
-    .max(4000),
-  extraInstructions: z.string().trim().max(8000).optional(),
-  /** Optional one-off paste (CV snippets, bio) — not stored */
-  pastedContext: z.string().trim().max(20000).optional(),
-  wordLimit: z.number().int().min(50).max(8000).optional().nullable(),
+    .min(1, "Paste or type the application question.")
+    .max(20000),
+  notes: z.string().trim().max(20000).optional().default(""),
 });
 
-export type MitchellSectionDraftResult =
-  | { ok: true; model: string; logId: string }
+export type MitchellQaActionResult =
+  | { ok: true; model: string; logId: string; responseMarkdown: string }
   | { ok: false; error: string };
 
 /**
- * Mitchell drafts one application section: first draft + blanks + material asks.
- * Persists `mitchell_section_draft_md` and `mitchell_section_followup_md`.
+ * Mitchell Q&A for a known app user (session or API token). Persists `mitchell_qa_*` columns.
  */
-export async function runMitchellSectionDraftForOpportunity(
+export async function executeMitchellQaForOpportunityUser(
+  userId: string,
   opportunityId: string,
-  params: z.infer<typeof mitchellSectionDraftParamsSchema>,
-): Promise<MitchellSectionDraftResult> {
+  params: z.infer<typeof mitchellQaParamsSchema>,
+  options?: { revalidate?: boolean },
+): Promise<MitchellQaActionResult> {
   try {
-    const parsed = mitchellSectionDraftParamsSchema.safeParse(params);
+    const parsed = mitchellQaParamsSchema.safeParse(params);
     if (!parsed.success) {
       return {
         ok: false,
@@ -469,17 +503,11 @@ export async function runMitchellSectionDraftForOpportunity(
       };
     }
 
-    const { email } = await getSessionUserEmailOrRedirect();
     const loaded = await loadOpportunityOrError(opportunityId);
     if (!loaded.ok) {
       return { ok: false, error: loaded.error };
     }
     const o = loaded.opportunity;
-
-    const userId = await getAppUserIdByEmail(email);
-    if (!userId) {
-      return { ok: false, error: "Local user profile missing; reload and try again." };
-    }
 
     const ctx = await tryCreateFundingOpsAiContext({
       userId,
@@ -493,9 +521,10 @@ export async function runMitchellSectionDraftForOpportunity(
       };
     }
 
-    const [knowledgeLinks, approvedCollateral] = await Promise.all([
+    const [knowledgeLinks, approvedCollateral, writingStyle] = await Promise.all([
       loadKnowledgeForOpportunity(opportunityId),
       loadApprovedCollateralExcerpts(),
+      loadWritingStyleBundleForOwner(o.ownerUserId),
     ]);
 
     let grantPageExcerpt: string | null = null;
@@ -508,11 +537,9 @@ export async function runMitchellSectionDraftForOpportunity(
     }
 
     const p = parsed.data;
-    const gen = await runMitchellSectionDraftSkill(ctx, {
-      sectionGoal: p.sectionGoal,
-      extraInstructions: p.extraInstructions,
-      pastedContext: p.pastedContext,
-      wordLimit: p.wordLimit ?? null,
+    const gen = await runMitchellQa(ctx, {
+      question: p.question,
+      notes: p.notes,
       opportunity: {
         title: o.title,
         funderName: o.funderName,
@@ -528,28 +555,53 @@ export async function runMitchellSectionDraftForOpportunity(
       approvedCollateral,
       grantPageExcerpt,
       applicationFormGuidanceExcerpt: DEFAULT_APPLICATION_FORMS_MD.slice(0, 6000),
+      writingStyle,
     });
 
-    const v = gen.value;
-    const followupMd = formatMitchellSectionFollowupMd(v);
-
+    const responseMd = gen.value.responseMarkdown.trim();
     const db = getServerDb();
     await db
       .update(opportunities)
       .set({
-        mitchellSectionDraftMd: v.draftMarkdown.trim(),
-        mitchellSectionFollowupMd: followupMd || null,
+        mitchellQaQuestionMd: p.question,
+        mitchellQaNotesMd: p.notes.trim() ? p.notes.trim() : null,
+        mitchellQaResponseMd: responseMd,
         updatedAt: new Date(),
       })
       .where(eq(opportunities.id, opportunityId));
 
-    revalidatePath(`/opportunities/${opportunityId}`);
-    revalidatePath(`/opportunities/${opportunityId}/edit`);
+    const shouldRevalidate = options?.revalidate !== false;
+    if (shouldRevalidate) {
+      revalidatePath(`/opportunities/${opportunityId}`);
+      revalidatePath(`/opportunities/${opportunityId}/edit`);
+    }
 
-    return { ok: true, model: gen.model, logId: gen.logId };
+    return {
+      ok: true,
+      model: gen.model,
+      logId: gen.logId,
+      responseMarkdown: responseMd,
+    };
   } catch (e) {
     return handleAiError(e);
   }
+}
+
+/**
+ * Mitchell answers a single application question using opportunity context, linked knowledge,
+ * approved collateral, optional grant page text, form scaffold, and the owner’s writing style.
+ * Persists `mitchell_qa_*` columns.
+ */
+export async function runMitchellQaForOpportunity(
+  opportunityId: string,
+  params: z.infer<typeof mitchellQaParamsSchema>,
+): Promise<MitchellQaActionResult> {
+  const { email } = await getSessionUserEmailOrRedirect();
+  const userId = await getAppUserIdByEmail(email);
+  if (!userId) {
+    return { ok: false, error: "Local user profile missing; reload and try again." };
+  }
+  return executeMitchellQaForOpportunityUser(userId, opportunityId, params);
 }
 
 export type MitchellGrantIntakeResult =
