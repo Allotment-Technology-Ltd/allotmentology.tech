@@ -497,12 +497,33 @@ export async function importFundingDiscoveryLeads(
         importedIds.push(row.id);
         existingNorm.add(url);
       } catch (err) {
+        // Final fallback: raw minimal insert to guarantee draft creation.
+        try {
+          const minimal = await db.execute<{ id: string }>(sql`
+            insert into opportunities (title, status, created_at, updated_at)
+            values (${title}, 'draft', now(), now())
+            returning id
+          `);
+          const fallbackId = minimal.rows?.[0]?.id;
+          if (fallbackId) {
+            importedIds.push(fallbackId);
+            existingNorm.add(url);
+            console.warn("[funding-discovery] import used raw minimal fallback", { url });
+            continue;
+          }
+        } catch (minimalErr) {
+          skippedInvalid += 1;
+          console.warn("[funding-discovery] import lead failed", {
+            url,
+            title: title.slice(0, 120),
+            error: err instanceof Error ? err.message : String(err),
+            minimalError:
+              minimalErr instanceof Error ? minimalErr.message : String(minimalErr),
+          });
+          continue;
+        }
+
         skippedInvalid += 1;
-        console.warn("[funding-discovery] import lead failed", {
-          url,
-          title: title.slice(0, 120),
-          error: err instanceof Error ? err.message : String(err),
-        });
       }
     }
 
