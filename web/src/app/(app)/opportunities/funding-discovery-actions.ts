@@ -471,12 +471,44 @@ export async function importFundingDiscoveryLeads(
           skippedInvalid += 1;
         }
       } catch (err) {
+        // Legacy-schema retry: some environments may be missing newer nullable columns.
+        // Fall back to core opportunity fields so imports still work.
+        try {
+          const [legacyRow] = await db
+            .insert(opportunities)
+            .values({
+              title,
+              summary,
+              funderName: cleanText(lead.funderName, 255),
+              grantUrl: cleanText(url, 8000),
+              closesAt: parseClosesAt(lead.closesAtIso),
+              status: "draft",
+              ownerUserId: userId,
+              updatedAt: new Date(),
+            })
+            .returning({ id: opportunities.id });
+
+          if (legacyRow) {
+            importedIds.push(legacyRow.id);
+            existingNorm.add(url);
+            console.warn("[funding-discovery] import used legacy insert fallback", {
+              url,
+            });
+            continue;
+          }
+        } catch (legacyErr) {
+          skippedInvalid += 1;
+          console.warn("[funding-discovery] import lead failed", {
+            url,
+            title: title.slice(0, 120),
+            error: err instanceof Error ? err.message : String(err),
+            legacyError:
+              legacyErr instanceof Error ? legacyErr.message : String(legacyErr),
+          });
+          continue;
+        }
+
         skippedInvalid += 1;
-        console.warn("[funding-discovery] import lead failed", {
-          url,
-          title: title.slice(0, 120),
-          error: err instanceof Error ? err.message : String(err),
-        });
       }
     }
 
