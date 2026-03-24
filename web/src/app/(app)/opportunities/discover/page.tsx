@@ -1,8 +1,7 @@
 import { z } from "zod";
 
-import { isTavilyConfigured } from "@/lib/funding-search/tavily";
-
-import { listFundingDiscoveryBriefs } from "../funding-discovery-briefs-actions";
+import { loadFundingDiscoveryBriefs } from "@/lib/opportunities/funding-discovery-briefs-list.server";
+import { isTavilyConfigured } from "@/lib/funding-search/tavily-env";
 import { FundingDiscoveryClient } from "./funding-discovery-client";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +14,7 @@ export default async function DiscoverFundingPage({
   const sp = await searchParams;
   const tavilyConfigured = isTavilyConfigured();
   const { briefs: savedBriefs, loadError: briefsLoadError } =
-    await listFundingDiscoveryBriefs();
+    await loadFundingDiscoveryBriefs();
   const initialBriefId =
     sp.brief && z.string().uuid().safeParse(sp.brief).success ? sp.brief : null;
   const initialBrief =

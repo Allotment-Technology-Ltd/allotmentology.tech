@@ -1,5 +1,7 @@
 import "server-only";
 
+export { isTavilyConfigured } from "./tavily-env";
+
 export type TavilySearchResult = {
   title: string;
   url: string;
@@ -10,9 +12,6 @@ export type TavilySearchResult = {
 /**
  * Web search via Tavily (https://tavily.com). Set `TAVILY_API_KEY` in the server environment.
  */
-export function isTavilyConfigured(): boolean {
-  return Boolean(process.env.TAVILY_API_KEY?.trim());
-}
 
 export async function searchTavily(query: string): Promise<TavilySearchResult[]> {
   const key = process.env.TAVILY_API_KEY?.trim();

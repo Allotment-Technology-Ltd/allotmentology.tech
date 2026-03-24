@@ -21,8 +21,8 @@ import {
 } from "@/lib/auth/session-user.server";
 import { getServerDb } from "@/lib/db/server";
 import { enrichTavilyResultsWithFetchedPages } from "@/lib/funding-search/enrich-page-text";
+import { isTavilyConfigured } from "@/lib/funding-search/tavily-env";
 import {
-  isTavilyConfigured,
   mergeTavilyResults,
   normalizeResultUrl,
   searchTavily,
