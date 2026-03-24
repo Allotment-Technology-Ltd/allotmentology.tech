@@ -30,6 +30,8 @@ const dangerBtn =
 
 export function FundingDiscoveryClient(props: {
   tavilyConfigured: boolean;
+  /** Non-null when the server could not read saved briefs (e.g. missing migration). */
+  briefsLoadError: string | null;
   savedBriefs: SavedFundingBriefListItem[];
   initialBrief: { id: string; label: string; briefText: string } | null;
 }) {
@@ -150,6 +152,19 @@ export function FundingDiscoveryClient(props: {
 
   return (
     <div className="space-y-8">
+      {props.briefsLoadError ? (
+        <div className="rounded-lg border border-amber-900/50 bg-amber-950/20 px-4 py-3 text-sm text-amber-100">
+          <p className="font-medium text-amber-50">Saved briefs unavailable</p>
+          <p className="mt-1 text-amber-100/90">{props.briefsLoadError}</p>
+          <p className="mt-2 text-xs text-amber-200/80">
+            You can still run Discover funding below. Production: ensure{" "}
+            <code className="rounded bg-zinc-950 px-1">npm run db:migrate</code> (or{" "}
+            <code className="rounded bg-zinc-950 px-1">vercel-build</code>) has applied migration{" "}
+            <code className="rounded bg-zinc-950 px-1">0016_funding_discovery_briefs</code>.
+          </p>
+        </div>
+      ) : null}
+
       {!props.tavilyConfigured ? (
         <div className="rounded-lg border border-amber-900/50 bg-amber-950/20 px-4 py-3 text-sm text-amber-100">
           <p className="font-medium text-amber-50">Web search is not configured</p>

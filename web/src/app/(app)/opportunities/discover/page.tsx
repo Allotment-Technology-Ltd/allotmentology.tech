@@ -14,7 +14,8 @@ export default async function DiscoverFundingPage({
 }) {
   const sp = await searchParams;
   const tavilyConfigured = isTavilyConfigured();
-  const savedBriefs = await listFundingDiscoveryBriefs();
+  const { briefs: savedBriefs, loadError: briefsLoadError } =
+    await listFundingDiscoveryBriefs();
   const initialBriefId =
     sp.brief && z.string().uuid().safeParse(sp.brief).success ? sp.brief : null;
   const initialBrief =
@@ -41,6 +42,7 @@ export default async function DiscoverFundingPage({
       <FundingDiscoveryClient
         key={initialBriefId ?? "none"}
         tavilyConfigured={tavilyConfigured}
+        briefsLoadError={briefsLoadError}
         savedBriefs={savedBriefs}
         initialBrief={
           initialBrief
