@@ -818,16 +818,88 @@ export async function loadOpportunityDetail(id: string) {
 
   const db = getServerDb();
 
-  const [oppRow] = await db
-    .select({
-      opportunity: opportunities,
-      ownerName: users.displayName,
-      ownerEmail: users.email,
-    })
-    .from(opportunities)
-    .leftJoin(users, eq(opportunities.ownerUserId, users.id))
-    .where(eq(opportunities.id, id))
-    .limit(1);
+  let oppRow:
+    | {
+        opportunity: typeof opportunities.$inferSelect;
+        ownerName: string | null;
+        ownerEmail: string | null;
+      }
+    | undefined;
+  try {
+    const [row] = await db
+      .select({
+        opportunity: opportunities,
+        ownerName: users.displayName,
+        ownerEmail: users.email,
+      })
+      .from(opportunities)
+      .leftJoin(users, eq(opportunities.ownerUserId, users.id))
+      .where(eq(opportunities.id, id))
+      .limit(1);
+    oppRow = row;
+  } catch (e) {
+    if (!isMissingColumnError(e)) throw e;
+    // Legacy-schema fallback: fetch core columns only and pad newer fields.
+    const legacy = await db.execute<{
+      id: string;
+      title: string;
+      summary: string | null;
+      funder_name: string | null;
+      closes_at: Date | string | null;
+      status: (typeof opportunities.$inferSelect)["status"];
+      owner_user_id: string | null;
+      created_at: Date | string;
+      updated_at: Date | string;
+      owner_name: string | null;
+      owner_email: string | null;
+    }>(sql`
+      select
+        o.id,
+        o.title,
+        o.summary,
+        o.funder_name,
+        o.closes_at,
+        o.status,
+        o.owner_user_id,
+        o.created_at,
+        o.updated_at,
+        u.display_name as owner_name,
+        u.email as owner_email
+      from opportunities o
+      left join users u on u.id = o.owner_user_id
+      where o.id = ${id}
+      limit 1
+    `);
+    const lr = legacy.rows[0];
+    if (!lr) return null;
+    oppRow = {
+      ownerName: lr.owner_name ?? null,
+      ownerEmail: lr.owner_email ?? null,
+      opportunity: {
+        id: lr.id,
+        title: lr.title,
+        summary: lr.summary,
+        funderName: lr.funder_name,
+        closesAt: lr.closes_at ? new Date(lr.closes_at) : null,
+        status: lr.status,
+        ownerUserId: lr.owner_user_id,
+        eligibilityNotes: null,
+        internalNotes: null,
+        estimatedValue: null,
+        currencyCode: "GBP",
+        grantUrl: null,
+        productFitAssessmentMd: null,
+        mitchellBriefMd: null,
+        mitchellSectionDraftMd: null,
+        mitchellSectionFollowupMd: null,
+        mitchellQaQuestionMd: null,
+        mitchellQaNotesMd: null,
+        mitchellQaResponseMd: null,
+        createdAt: new Date(lr.created_at),
+        updatedAt: new Date(lr.updated_at),
+      },
+    };
+  }
 
   if (!oppRow) return null;
 
