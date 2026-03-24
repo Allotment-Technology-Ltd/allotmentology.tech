@@ -27,6 +27,7 @@ import {
   normalizeResultUrl,
   searchTavily,
 } from "@/lib/funding-search/tavily";
+import type { TavilyResultInput } from "@/lib/ai/skills/mitchell-funding-discovery";
 
 const userBriefSchema = z
   .string()
@@ -55,6 +56,52 @@ function parseClosesAt(iso: string | null | undefined): Date | null {
   if (iso == null || typeof iso !== "string" || !iso.trim()) return null;
   const d = new Date(iso.trim());
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function buildFallbackFundingQueries(userBrief: string): string[] {
+  const base = userBrief.trim().replace(/\s+/g, " ").slice(0, 180);
+  return [
+    `${base} startup grants UK`,
+    `${base} cloud credits AI startup programme`,
+    `${base} innovation funding accelerator`,
+  ];
+}
+
+function buildFallbackLeadsFromSearchResults(
+  results: TavilyResultInput[],
+): FundingDiscoveryLead[] {
+  const seen = new Set<string>();
+  const leads: FundingDiscoveryLead[] = [];
+
+  for (const r of results) {
+    const grantUrl = normalizeResultUrl(r.url);
+    if (seen.has(grantUrl)) continue;
+    seen.add(grantUrl);
+
+    const summary = r.content.trim().slice(0, 700);
+    leads.push({
+      title: r.title.trim().slice(0, 200) || "Funding opportunity",
+      funderName: null,
+      summary:
+        summary.length > 0
+          ? summary
+          : "Potential funding programme found from web search results.",
+      grantUrl,
+      closesAtIso: null,
+      tags: ["web_search", "manual_review_needed"],
+      eligibilityNotes:
+        "Auto-generated fallback lead because structured AI output failed. Review source page before importing.",
+      confidence: "low",
+      caveats: [
+        "Generated from search snippets only; details may be incomplete.",
+        "Confirm eligibility, deadlines, and current programme status on the source page.",
+      ],
+    });
+
+    if (leads.length >= 8) break;
+  }
+
+  return leads;
 }
 
 export type FundingDiscoveryRunResult =
@@ -134,8 +181,21 @@ export async function runFundingDiscovery(
       };
     }
 
-    const expanded = await runFundingSearchQueryExpansion(ctx, { userBrief });
-    const queriesUsed = expanded.value.queries;
+    let queriesUsed: string[];
+    try {
+      const expanded = await runFundingSearchQueryExpansion(ctx, { userBrief });
+      queriesUsed = expanded.value.queries;
+    } catch (e) {
+      if (e instanceof AiParseError) {
+        console.warn(
+          "[funding-discovery] Query expansion parse failed; using fallback queries.",
+          e.message,
+        );
+        queriesUsed = buildFallbackFundingQueries(userBrief);
+      } else {
+        throw e;
+      }
+    }
 
     const batchResults = await Promise.all(
       queriesUsed.map(async (q) => {
@@ -161,12 +221,35 @@ export async function runFundingDiscovery(
     const pageEnrichmentCount = Math.min(6, merged.length);
     const forModel = enriched.slice(0, 12);
 
-    const gen = await runMitchellFundingDiscovery(ctx, {
-      userBrief,
-      searchResults: forModel,
-    });
+    let generatedLeads: FundingDiscoveryLead[];
+    let overallCaveats: string[];
+    let model = ctx.model;
+    let logId = "fallback-no-log";
+    try {
+      const gen = await runMitchellFundingDiscovery(ctx, {
+        userBrief,
+        searchResults: forModel,
+      });
+      generatedLeads = gen.value.leads;
+      overallCaveats = gen.value.overallCaveats;
+      model = gen.model;
+      logId = gen.logId;
+    } catch (e) {
+      if (e instanceof AiParseError) {
+        console.warn(
+          "[funding-discovery] Mitchell structured parse failed; using fallback lead extraction.",
+          e.message,
+        );
+        generatedLeads = buildFallbackLeadsFromSearchResults(forModel);
+        overallCaveats = [
+          "Structured AI extraction failed for this run; showing deterministic fallback leads from search results.",
+        ];
+      } else {
+        throw e;
+      }
+    }
 
-    if (gen.value.leads.length === 0) {
+    if (generatedLeads.length === 0) {
       return {
         ok: false,
         error:
@@ -190,11 +273,11 @@ export async function runFundingDiscovery(
 
     return {
       ok: true,
-      leads: gen.value.leads,
-      overallCaveats: gen.value.overallCaveats,
+      leads: generatedLeads,
+      overallCaveats,
       queriesUsed,
-      model: gen.model,
-      logId: gen.logId,
+      model,
+      logId,
       pageEnrichmentCount,
     };
   } catch (e) {
