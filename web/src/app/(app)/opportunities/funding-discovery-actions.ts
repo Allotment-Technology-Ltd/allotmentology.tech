@@ -480,7 +480,6 @@ export async function importFundingDiscoveryLeads(
               title,
               summary,
               funderName: cleanText(lead.funderName, 255),
-              grantUrl: cleanText(url, 8000),
               closesAt: parseClosesAt(lead.closesAtIso),
               status: "draft",
               ownerUserId: userId,
