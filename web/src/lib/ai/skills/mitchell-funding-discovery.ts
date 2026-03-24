@@ -7,17 +7,21 @@ import { asGenerated } from "@/lib/ai/types";
 
 export const fundingDiscoveryLeadSchema = z.object({
   title: z.string().min(1).max(4000),
-  funderName: z.string().max(255).nullable(),
+  funderName: z.string().max(255).nullable().optional().default(null),
   summary: z.string().max(8000),
   /** Must be one of the URLs from the search results payload (exact match after normalisation is not required; pick the best canonical programme page). */
   grantUrl: z.string().url(),
   closesAtIso: z
     .string()
     .nullable()
+    .optional()
+    .default(null)
     .describe("ISO-8601 date if mentioned in snippets; else null"),
   tags: z
     .array(z.string().max(64))
     .max(12)
+    .optional()
+    .default([])
     .describe("e.g. cloud_credits, marketing, UK, R&D"),
   eligibilityNotes: z
     .string()
@@ -25,13 +29,13 @@ export const fundingDiscoveryLeadSchema = z.object({
     .optional()
     .default("")
     .describe("Short notes on who it is for; unknowns explicit"),
-  confidence: z.enum(["low", "medium", "high"]),
-  caveats: z.array(z.string().max(500)).max(8),
+  confidence: z.enum(["low", "medium", "high"]).optional().default("low"),
+  caveats: z.array(z.string().max(500)).max(8).optional().default([]),
 });
 
 export const mitchellFundingDiscoveryOutputSchema = z.object({
   leads: z.array(fundingDiscoveryLeadSchema).max(10),
-  overallCaveats: z.array(z.string().max(500)).max(8),
+  overallCaveats: z.array(z.string().max(500)).max(8).optional().default([]),
 });
 
 export type FundingDiscoveryLead = z.infer<typeof fundingDiscoveryLeadSchema>;
