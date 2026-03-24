@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
 
 import { MitchellAvatar } from "@/components/mitchell-avatar";
+import type { FundingDiscoveryLead } from "@/lib/ai/skills/mitchell-funding-discovery";
 
 import {
   deleteFundingDiscoveryBrief,
@@ -14,7 +15,6 @@ import {
 import {
   importFundingDiscoveryLeads,
   runFundingDiscovery,
-  type FundingDiscoveryLead,
   type FundingDiscoveryRunResult,
 } from "../funding-discovery-actions";
 

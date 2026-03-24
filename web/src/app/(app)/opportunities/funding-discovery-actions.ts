@@ -57,8 +57,6 @@ function parseClosesAt(iso: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export type { FundingDiscoveryLead };
-
 export type FundingDiscoveryRunResult =
   | {
       ok: true;
