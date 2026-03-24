@@ -14,10 +14,8 @@ import { normalizeAnthropicCatalogModelId } from "@/lib/ai/anthropic-catalog-mod
 import { resolveCatalogNativeBaseUrl } from "@/lib/ai/provider/catalog-native-bases";
 import { getDefaultAiProvider } from "@/lib/ai/provider/env-config";
 import { validateOpenAiCompatibleChat } from "@/lib/ai/validate-openai-compatible";
-import {
-  isOpenAiCompatibleCatalogMode,
-  validateCatalogProviderKey,
-} from "@/lib/ai/validate-native-provider";
+import { catalogProviderUsesOpenAiChat } from "@/lib/ai/provider/catalog-provider-routing";
+import { validateCatalogProviderKey } from "@/lib/ai/validate-native-provider";
 import { getAuthServer } from "@/lib/auth/server";
 import { getServerDb } from "@/lib/db/server";
 import {
@@ -121,7 +119,7 @@ function resolveStoredBaseUrlForCatalogProvider(
 ): { ok: true; baseUrl: string } | { ok: false; message: string } {
   const requiresBase = provider.validation?.requiresBaseUrl === true;
 
-  if (isOpenAiCompatibleCatalogMode(provider)) {
+  if (catalogProviderUsesOpenAiChat(provider)) {
     return resolveOpenAiCompatibleBaseForCatalogAction(provider, userBaseUrl);
   }
 
@@ -269,7 +267,7 @@ export async function validateByokKeyAction(
   const model = normalizeModelForCatalogProvider(provider.id, parsed.data.model);
   const requiresBase = provider.validation?.requiresBaseUrl === true;
 
-  if (requiresBase && !isOpenAiCompatibleCatalogMode(provider)) {
+  if (requiresBase && !catalogProviderUsesOpenAiChat(provider)) {
     const u = parsed.data.baseUrl.trim();
     if (!u) {
       return { error: "API base URL is required for this provider." };
@@ -280,7 +278,7 @@ export async function validateByokKeyAction(
   }
 
   let openAiCompatibleBaseUrl: string | null = null;
-  if (isOpenAiCompatibleCatalogMode(provider)) {
+  if (catalogProviderUsesOpenAiChat(provider)) {
     const resolved = resolveOpenAiCompatibleBaseForCatalogAction(
       provider,
       parsed.data.baseUrl,

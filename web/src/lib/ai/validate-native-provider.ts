@@ -1,6 +1,7 @@
 import "server-only";
 
 import { explainAnthropicModelNotFound } from "@/lib/ai/anthropic-model-hints";
+import { resolveCatalogProviderRouting } from "@/lib/ai/provider/catalog-provider-routing";
 import type { CatalogProviderSummary } from "@/lib/restormel-keys/catalog";
 import { validateOpenAiCompatibleChat } from "@/lib/ai/validate-openai-compatible";
 
@@ -108,29 +109,11 @@ function trimApiBase(url: string): string {
   return url.trim().replace(/\/+$/, "");
 }
 
-/**
- * Effective routing mode for BYOK validation.
- * Restormel Keys (`CatalogProviderValidation.mode`) may be `"none"` meaning “infer from
- * provider id”; we must not pass `"none"` through to validation (it is unsupported).
- */
-export function catalogValidationMode(provider: CatalogProviderSummary): string {
-  const normalized =
-    provider.validation?.mode?.trim().toLowerCase().replace(/-/g, "_") ?? "";
-  const raw = normalized === "none" ? "" : normalized;
-  if (raw) return raw;
-  if (provider.id === "openai") return "openai_compatible";
-  if (provider.id === "anthropic" || provider.id === "google") return "native";
-  return "openai_compatible";
-}
-
-export function isOpenAiCompatibleCatalogMode(provider: CatalogProviderSummary): boolean {
-  const m = catalogValidationMode(provider);
-  return m === "openai_compatible" || m === "openai_compat" || m === "openai";
-}
+export type { CatalogProviderRoutingKind } from "@/lib/ai/provider/catalog-provider-routing";
 
 /**
- * Validate a key using the catalog provider row (`validation.mode` + `id`), not a hardcoded id list.
- * For OpenAI-compatible modes, pass the resolved chat-completions base URL (including `validation.defaultApiBaseUrl`).
+ * Smoke-test a BYOK key using {@link resolveCatalogProviderRouting} (id-first: only
+ * `anthropic` / `google` use non–OpenAI-compat validators).
  */
 export async function validateCatalogProviderKey(
   provider: CatalogProviderSummary,
@@ -138,13 +121,9 @@ export async function validateCatalogProviderKey(
   model: string,
   openAiCompatibleBaseUrl: string | null,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const mode = catalogValidationMode(provider);
+  const kind = resolveCatalogProviderRouting(provider);
 
-  if (
-    mode === "openai_compatible" ||
-    mode === "openai_compat" ||
-    mode === "openai"
-  ) {
+  if (kind === "openai_chat") {
     const base = openAiCompatibleBaseUrl?.trim();
     if (!base) {
       return {
@@ -155,27 +134,9 @@ export async function validateCatalogProviderKey(
     return validateOpenAiCompatibleChat(trimApiBase(base), apiKey, model);
   }
 
-  if (
-    mode === "native" ||
-    mode === "native_anthropic" ||
-    mode === "anthropic_native" ||
-    mode === "native_google" ||
-    mode === "google_native"
-  ) {
-    if (provider.id === "anthropic") {
-      return validateAnthropicNativeKey(apiKey, model);
-    }
-    if (provider.id === "google") {
-      return validateGoogleGeminiNativeKey(apiKey, model);
-    }
-    return {
-      ok: false,
-      message: `Unsupported native catalog provider id: ${provider.id}.`,
-    };
+  if (kind === "anthropic_messages") {
+    return validateAnthropicNativeKey(apiKey, model);
   }
 
-  return {
-    ok: false,
-    message: `Unsupported validation mode "${mode}" for provider ${provider.id}.`,
-  };
+  return validateGoogleGeminiNativeKey(apiKey, model);
 }

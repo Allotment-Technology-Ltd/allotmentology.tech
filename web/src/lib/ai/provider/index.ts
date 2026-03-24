@@ -12,3 +12,8 @@ export {
   resolveAiProviderForUser,
   resolveAiModelForUser,
 } from "./resolve-user";
+export {
+  resolveCatalogProviderRouting,
+  catalogProviderUsesOpenAiChat,
+  type CatalogProviderRoutingKind,
+} from "./catalog-provider-routing";
