@@ -103,14 +103,23 @@ export function FundingDiscoveryClient(props: {
         setImportMsg(r.error);
         return;
       }
-      const parts = [
-        `Imported ${r.importedIds.length} draft opportunit${r.importedIds.length === 1 ? "y" : "ies"}.`,
-      ];
+      const parts: string[] = [];
+      if (r.importedIds.length > 0) {
+        parts.push(
+          `Imported ${r.importedIds.length} draft opportunit${r.importedIds.length === 1 ? "y" : "ies"}.`,
+        );
+      } else {
+        parts.push("No new drafts were imported.");
+      }
       if (r.skippedDuplicates > 0) {
         parts.push(`Skipped ${r.skippedDuplicates} duplicate URL(s) already in your pipeline.`);
       }
       setImportMsg(parts.join(" "));
-      router.refresh();
+      if (r.importedIds.length > 0) {
+        router.push("/opportunities?sort=updated");
+      } else {
+        router.refresh();
+      }
     });
   };
 
@@ -337,8 +346,18 @@ export function FundingDiscoveryClient(props: {
                 >
                   {importPending ? "Importing…" : "Import selected as drafts"}
                 </button>
-                {importMsg?.startsWith("Imported") ? (
-                  <span className="text-sm text-emerald-400/90">{importMsg}</span>
+                {importMsg ? (
+                  <span
+                    className={`text-sm ${
+                      importMsg.startsWith("Imported")
+                        ? "text-emerald-400/90"
+                        : importMsg.startsWith("No new drafts")
+                          ? "text-amber-300"
+                          : "text-red-400"
+                    }`}
+                  >
+                    {importMsg}
+                  </span>
                 ) : null}
               </div>
 

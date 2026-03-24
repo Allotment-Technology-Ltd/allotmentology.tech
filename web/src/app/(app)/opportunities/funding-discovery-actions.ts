@@ -59,10 +59,25 @@ function parseClosesAt(iso: string | null | undefined): Date | null {
 }
 
 function buildFallbackFundingQueries(userBrief: string): string[] {
-  const base = userBrief.trim().replace(/\s+/g, " ").slice(0, 180);
+  const normalized = userBrief.toLowerCase().replace(/\s+/g, " ");
+  const geo =
+    normalized.match(
+      /\b(uk|united kingdom|england|scotland|wales|europe|eu|usa|united states|canada|australia)\b/,
+    )?.[0] ?? "UK";
+  const sectorHints = [
+    "ai",
+    "startup",
+    "saas",
+    "deeptech",
+    "research",
+    "cloud",
+    "developer tools",
+  ].filter((h) => normalized.includes(h));
+  const sector = sectorHints.length > 0 ? sectorHints.slice(0, 3).join(" ") : "startup";
+  const base = `${geo} ${sector}`.trim();
   return [
-    `${base} startup grants UK`,
-    `${base} cloud credits AI startup programme`,
+    `${base} grant programme seed pre-seed`,
+    `${base} cloud credits startup programme`,
     `${base} innovation funding accelerator`,
   ];
 }
@@ -72,13 +87,48 @@ function buildFallbackLeadsFromSearchResults(
 ): FundingDiscoveryLead[] {
   const seen = new Set<string>();
   const leads: FundingDiscoveryLead[] = [];
+  const badSignals = [
+    "linkedin.com",
+    "lesswrong.com",
+    "wikipedia.org",
+    "youtube.com",
+    "epistemolog",
+    "philosophy",
+  ];
+  const fundingSignals = [
+    "grant",
+    "funding",
+    "programme",
+    "program",
+    "accelerator",
+    "credit",
+    "voucher",
+    "innovation",
+    "startup",
+    "scheme",
+    "r&d",
+    "research",
+  ];
 
   for (const r of results) {
+    const haystack = `${r.title} ${r.content} ${r.url}`.toLowerCase();
+    if (badSignals.some((s) => haystack.includes(s))) continue;
+    const signalCount = fundingSignals.filter((s) => haystack.includes(s)).length;
+    if (signalCount === 0) continue;
+
     const grantUrl = normalizeResultUrl(r.url);
     if (seen.has(grantUrl)) continue;
     seen.add(grantUrl);
 
     const summary = r.content.trim().slice(0, 700);
+    const confidence: FundingDiscoveryLead["confidence"] =
+      typeof r.score === "number" && r.score >= 0.85 && signalCount >= 4 && summary.length >= 240
+        ? "high"
+        : typeof r.score === "number" && r.score >= 0.55 && signalCount >= 2
+          ? "medium"
+          : signalCount >= 3 || summary.length >= 160
+            ? "medium"
+            : "low";
     leads.push({
       title: r.title.trim().slice(0, 200) || "Funding opportunity",
       funderName: null,
@@ -91,7 +141,7 @@ function buildFallbackLeadsFromSearchResults(
       tags: ["web_search", "manual_review_needed"],
       eligibilityNotes:
         "Auto-generated fallback lead because structured AI output failed. Review source page before importing.",
-      confidence: "low",
+      confidence,
       caveats: [
         "Generated from search snippets only; details may be incomplete.",
         "Confirm eligibility, deadlines, and current programme status on the source page.",
@@ -99,6 +149,32 @@ function buildFallbackLeadsFromSearchResults(
     });
 
     if (leads.length >= 8) break;
+  }
+
+  // If filters are too strict, still provide a minimal fallback from top results.
+  if (leads.length === 0) {
+    for (const r of results.slice(0, 5)) {
+      const grantUrl = normalizeResultUrl(r.url);
+      if (seen.has(grantUrl)) continue;
+      seen.add(grantUrl);
+      leads.push({
+        title: r.title.trim().slice(0, 200) || "Funding opportunity",
+        funderName: null,
+        summary:
+          r.content.trim().slice(0, 700) ||
+          "Potential funding programme found from web search results.",
+        grantUrl,
+        closesAtIso: null,
+        tags: ["web_search", "manual_review_needed"],
+        eligibilityNotes:
+          "Auto-generated fallback lead because structured AI output failed. Review source page before importing.",
+        confidence: "low",
+        caveats: [
+          "Generated from search snippets only; details may be incomplete.",
+          "Confirm eligibility, deadlines, and current programme status on the source page.",
+        ],
+      });
+    }
   }
 
   return leads;
