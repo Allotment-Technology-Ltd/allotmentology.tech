@@ -9,10 +9,10 @@ import { AiNotConfiguredError, AiParseError, AiProviderError } from "@/lib/ai/er
 import { logAiProviderErrorForRoute } from "@/lib/ai/log-provider-failure";
 import { augmentProviderErrorMessage } from "@/lib/ai/provider-error-hints";
 import { tryCreateFundingOpsAiContext } from "@/lib/ai/runtime";
+import type { FundingDiscoveryLead } from "@/lib/ai/skills/mitchell-funding-discovery";
 import {
   fundingDiscoveryLeadSchema,
   runMitchellFundingDiscovery,
-  type FundingDiscoveryLead,
 } from "@/lib/ai/skills/mitchell-funding-discovery";
 import { runFundingSearchQueryExpansion } from "@/lib/ai/skills/funding-search-query-expansion";
 import {
