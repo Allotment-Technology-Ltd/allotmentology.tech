@@ -26,7 +26,7 @@ export const mitchellIntakeOutputSchema = z.object({
     .array(
       z.object({
         sectionHeading: z.string(),
-        hint: z.string(),
+        hint: z.union([z.string(), z.null(), z.undefined()]).transform((h) => h ?? ""),
       }),
     )
     .default([]),
@@ -34,7 +34,11 @@ export const mitchellIntakeOutputSchema = z.object({
   verifyOnPortal: z.array(z.string()).default([]),
   /** One warm, grounded line — optional */
   heartOfGoldLine: z.string().optional(),
-  confidence: z.number().min(0).max(1).default(0.5),
+  /** Models sometimes omit, null, or stringify; coerce before clamping. */
+  confidence: z.preprocess(
+    (v) => (v === null || v === undefined ? 0.5 : v),
+    z.coerce.number().min(0).max(1),
+  ),
 });
 
 export type MitchellIntakeOutput = z.infer<typeof mitchellIntakeOutputSchema>;

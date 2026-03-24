@@ -29,7 +29,10 @@ export const mitchellSectionDraftOutputSchema = z.object({
   /** Free-form lines if something does not fit the categories */
   otherAsks: z.array(z.string()).default([]),
   citationsNeeded: z.array(z.string()).default([]),
-  confidence: z.number().min(0).max(1).default(0.5),
+  confidence: z.preprocess(
+    (v) => (v === null || v === undefined ? 0.5 : v),
+    z.coerce.number().min(0).max(1),
+  ),
 });
 
 export type MitchellSectionDraftOutput = z.infer<
