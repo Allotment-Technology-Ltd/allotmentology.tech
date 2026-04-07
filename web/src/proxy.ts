@@ -5,7 +5,16 @@ import { isNeonAuthConfigured } from "@/lib/auth/auth-config";
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const isPublicPath = path === "/" || path === "/pending-approval";
+  const isPublicPath =
+    path === "/" ||
+    path === "/about" ||
+    path === "/now" ||
+    path === "/contact" ||
+    path === "/writing" ||
+    path.startsWith("/writing/") ||
+    path === "/case-studies" ||
+    path.startsWith("/case-studies/") ||
+    path === "/pending-approval";
 
   if (isNeonAuthConfigured() && path === "/setup") {
     return NextResponse.redirect(new URL("/", request.url));
