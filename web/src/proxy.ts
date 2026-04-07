@@ -5,6 +5,7 @@ import { isNeonAuthConfigured } from "@/lib/auth/auth-config";
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  const isPublicPath = path === "/" || path === "/pending-approval";
 
   if (isNeonAuthConfigured() && path === "/setup") {
     return NextResponse.redirect(new URL("/", request.url));
@@ -12,6 +13,7 @@ export async function proxy(request: NextRequest) {
 
   if (!isNeonAuthConfigured()) {
     if (
+      isPublicPath ||
       path === "/setup" ||
       path.startsWith("/_next") ||
       path === "/favicon.ico"
@@ -25,6 +27,9 @@ export async function proxy(request: NextRequest) {
   const runAuth = neonAuthMiddleware({
     loginUrl: "/auth/sign-in",
   });
+  if (isPublicPath) {
+    return NextResponse.next();
+  }
   return runAuth(request);
 }
 

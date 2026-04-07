@@ -19,6 +19,7 @@ import {
   conflictSeverityEnum,
   watchlistSourceTypeEnum,
   knowledgeAssetTypeEnum,
+  userApprovalStatusEnum,
 } from "./enums";
 
 export const users = pgTable("users", {
@@ -26,6 +27,11 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 320 }).notNull().unique(),
   displayName: varchar("display_name", { length: 255 }),
   avatarUrl: text("avatar_url"),
+  approvalStatus: userApprovalStatusEnum("approval_status")
+    .notNull()
+    .default("pending"),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

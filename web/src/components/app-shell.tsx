@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AuthUserMenu } from "@/components/auth-user-menu";
 
 const nav = [
-  { href: "/", label: "Dashboard" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/opportunities", label: "Opportunities" },
   { href: "/collateral", label: "Collateral" },
   { href: "/submission-packs", label: "Submission packs" },

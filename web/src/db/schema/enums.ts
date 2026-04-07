@@ -56,3 +56,9 @@ export const knowledgeAssetTypeEnum = pgEnum("knowledge_asset_type", [
   "portal",
   "other",
 ]);
+
+export const userApprovalStatusEnum = pgEnum("user_approval_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);

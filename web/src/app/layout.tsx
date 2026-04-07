@@ -16,8 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Funding ops — Allotment Technology",
-  description: "Internal funding operations workspace",
+  title: "Allotment Technology — Product showcase and workspace",
+  description:
+    "Public showcase for Restormel Keys, SOPHIA, and PLOT, plus an approval-gated internal workspace.",
 };
 
 export default function RootLayout({

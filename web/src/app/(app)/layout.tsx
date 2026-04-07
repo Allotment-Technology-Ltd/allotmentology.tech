@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/app-shell";
-import { ensureAppUser } from "@/lib/auth/ensure-app-user";
+import { requireApprovedAppUserOrRedirect } from "@/lib/auth/access-control.server";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await ensureAppUser();
+  await requireApprovedAppUserOrRedirect();
 
   return <AppShell>{children}</AppShell>;
 }

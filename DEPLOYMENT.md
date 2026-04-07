@@ -84,6 +84,14 @@ npm run db:seed
 
 **App user sync:** After sign-in, `ensureAppUser()` creates/updates `public.users` keyed by email.
 
+**Approval-gated access:** New users are created as `pending` and cannot enter the workspace until approved. Existing users are backfilled to `approved` by migration `0017_user_approval_gating.sql`.
+
+**Bootstrap admin (required):**
+
+- Set `ADMIN_EMAILS` (comma-separated, lowercase recommended) in `web/.env` and Vercel so your account is created with `is_admin=true` on first sign-in.
+- Example: `ADMIN_EMAILS=you@example.com,cofounder@example.com`
+- Admins can then approve/reject users at `/settings/approvals`.
+
 ---
 
 ## 5. AI layer (optional)
@@ -129,7 +137,7 @@ cd web
 npm run dev
 ```
 
-Open `http://localhost:3000`. Unauthenticated users are redirected to `/auth/sign-in`.
+Open `http://localhost:3000`. The public showcase is available at `/`; sign in from there to request access.
 
 ---
 
@@ -203,6 +211,7 @@ Project **Cursor rules** under `.cursor/rules/` describe when to use **contact@r
 |----------------|----------|
 | Neon Postgres URL | `web/.env` → `DATABASE_URL`; Vercel → `DATABASE_URL` |
 | Neon Auth URL | `web/.env` → `NEON_AUTH_BASE_URL`; Vercel → `NEON_AUTH_BASE_URL` |
+| Workspace admin bootstrap (optional but recommended) | `web/.env` / Vercel → `ADMIN_EMAILS` (comma-separated) |
 | OAuth client IDs/secrets | Neon Auth configuration (not in this repo) |
 | OpenAI (or compatible) key | `web/.env` / Vercel → `AI_API_KEY` or `OPENAI_API_KEY` |
 | Restormel adapter key | `web/.env` / Vercel → `RESTORMEL_KEYS_API_KEY` (when `AI_PROVIDER=restormel-keys`) |

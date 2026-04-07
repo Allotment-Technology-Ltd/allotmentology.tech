@@ -1,8 +1,12 @@
 import Link from "next/link";
 
+import { requireApprovedAppUserOrRedirect } from "@/lib/auth/access-control.server";
+
 export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const appUser = await requireApprovedAppUserOrRedirect();
+
   return (
     <div className="space-y-8">
       <div>
@@ -40,6 +44,19 @@ export default function SettingsPage() {
             Tokens for the Mitchell extension — Q&A on funding sites from your workspace
           </p>
         </li>
+        {appUser.isAdmin ? (
+          <li>
+            <Link
+              href="/settings/approvals"
+              className="font-medium text-sky-400 hover:text-sky-300 hover:underline"
+            >
+              Account approvals
+            </Link>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              Approve or reject access requests for the workspace
+            </p>
+          </li>
+        ) : null}
         <li>
           <Link
             href="/account/settings"
