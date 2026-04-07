@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 
+import { Reveal } from "@/components/public-site/motion/reveal";
 import { PublicNav } from "@/components/public-site/public-nav";
 import { SectionIntro } from "@/components/public-site/section-intro";
+import { WorkCrossLinks } from "@/components/public-site/work-cross-links";
 import { WritingCard } from "@/components/public-site/writing-card";
-import { writingPosts } from "@/lib/public-site/content";
+import { writingIndexIntro, writingPosts } from "@/lib/public-site/content";
 
 export const metadata: Metadata = {
-  title: "Writing — Allotment Works",
+  title: "Writing — Adam Boon",
   description:
-    "Long-form product essays and field notes on AI, systems, and delivery in complex environments.",
+    "Essays by Adam Boon on AI-assisted software work, delivery economics, craft, and product method.",
 };
 
 export default function WritingIndexPage() {
@@ -16,34 +18,48 @@ export default function WritingIndexPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-10 px-6 py-14 sm:px-10 sm:py-20">
-      <PublicNav />
-      <SectionIntro
-        heading="Writing"
-        description="Essays and build notes on software, AI, and product work. This section is where method and reflection are documented in public."
-      />
-      <div className="rounded-xl border border-zinc-800 bg-zinc-950/35 p-5 text-sm text-zinc-400">
-        <p className="font-medium text-zinc-200">Featured series: AI Coding</p>
-        <p className="mt-1 leading-relaxed">
-          Three connected essays on AI-assisted software work: accountability,
-          development cost, and what to preserve as tools improve.
-        </p>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {sorted.map((post) => (
-          <WritingCard
-            key={post.slug}
-            href={`/writing/${post.slug}`}
-            title={post.title}
-            summary={post.summary}
-            readingTime={post.readingTime}
-            publishedAt={post.publishedAt}
-            category={post.category}
-            tags={post.tags}
-            seriesName={post.series?.name}
-            seriesPart={post.series?.part}
-          />
-        ))}
-      </div>
+      <Reveal>
+        <PublicNav />
+      </Reveal>
+      <Reveal delay={0.05}>
+        <SectionIntro
+          eyebrow={writingIndexIntro.eyebrow}
+          heading={writingIndexIntro.heading}
+          description={writingIndexIntro.description}
+          accent="writing"
+        />
+      </Reveal>
+      <Reveal>
+        <div className="rounded-2xl border border-sky-500/20 bg-gradient-to-r from-sky-950/25 to-zinc-950/40 p-6 text-sm text-zinc-400">
+          <p className="font-medium text-sky-300/90">Series: AI Coding</p>
+          <p className="mt-2 leading-relaxed">
+            Three connected essays — legitimacy and guilt, shifted development economics, and what to
+            preserve when generation gets fluent. Read in order or jump in where the question bites.
+          </p>
+        </div>
+      </Reveal>
+      <Reveal>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {sorted.map((post) => (
+            <WritingCard
+              key={post.slug}
+              href={`/writing/${post.slug}`}
+              title={post.title}
+              summary={post.summary}
+              readingTime={post.readingTime}
+              publishedAt={post.publishedAt}
+              category={post.category}
+              tags={post.tags}
+              seriesName={post.series?.name}
+              seriesPart={post.series?.part}
+            />
+          ))}
+        </div>
+      </Reveal>
+
+      <Reveal>
+        <WorkCrossLinks caption="Case studies and products carry the same thread from different angles" />
+      </Reveal>
     </main>
   );
 }

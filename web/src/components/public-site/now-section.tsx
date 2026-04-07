@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { siteIdentity } from "@/lib/public-site/content";
+
 type NowSectionProps = {
   text: string;
 };
@@ -7,6 +9,9 @@ type NowSectionProps = {
 export function NowSection({ text }: NowSectionProps) {
   return (
     <section className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/35 p-6">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+        {siteIdentity.name} · {siteIdentity.location}
+      </p>
       <h2 className="text-2xl font-semibold tracking-tight text-zinc-50">Now</h2>
       <p className="max-w-4xl text-sm leading-relaxed text-zinc-400 sm:text-base">
         {text}

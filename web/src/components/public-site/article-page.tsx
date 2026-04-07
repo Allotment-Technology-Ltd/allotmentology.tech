@@ -1,6 +1,10 @@
+import { Fragment } from "react";
+
+import { PullQuote } from "@/components/public-site/pull-quote";
 import { RelatedReading } from "@/components/public-site/related-reading";
 import { PublicNav } from "@/components/public-site/public-nav";
 import { SeriesNavigation } from "@/components/public-site/series-navigation";
+import { WorkCrossLinks } from "@/components/public-site/work-cross-links";
 import type { ArticleEntry } from "@/lib/public-site/content";
 
 type ArticlePageProps = {
@@ -15,22 +19,22 @@ export function ArticlePage({
   nextInSeriesHref,
 }: ArticlePageProps) {
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-10 px-6 py-14 sm:px-10 sm:py-20">
+    <main className="mx-auto w-full max-w-3xl space-y-12 px-6 py-14 sm:px-10 sm:py-20">
       <PublicNav />
-      <article className="space-y-8">
-        <header className="space-y-4 border-b border-zinc-800/80 pb-8">
+      <article className="space-y-10">
+        <header className="space-y-5 border-b border-zinc-800/80 pb-10">
           <p className="text-xs font-medium uppercase tracking-[0.15em] text-zinc-500">
             {article.section === "case-studies" ? "Case study" : "Writing"}
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl">
+          <h1 className="text-[1.65rem] font-semibold leading-tight tracking-tight text-zinc-50 sm:text-4xl sm:leading-tight">
             {article.title}
           </h1>
           {article.subtitle ? (
-            <p className="text-base leading-relaxed text-zinc-300 sm:text-lg">
-              {article.subtitle}
-            </p>
+            <p className="text-lg leading-relaxed text-zinc-300 sm:text-xl">{article.subtitle}</p>
           ) : null}
-          <p className="text-sm leading-relaxed text-zinc-400">{article.standfirst}</p>
+          <p className="border-l-2 border-zinc-700 pl-4 text-base leading-relaxed text-zinc-400">
+            {article.standfirst}
+          </p>
           <div className="flex flex-wrap gap-2 text-xs text-zinc-500">
             <span>{article.publishedAt}</span>
             <span>·</span>
@@ -50,9 +54,14 @@ export function ArticlePage({
           </div>
         </header>
 
-        <div className="space-y-5 text-sm leading-relaxed text-zinc-300 sm:text-base">
-          {article.body.map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
+        <div className="space-y-6 text-[1.05rem] leading-[1.75] text-zinc-300 sm:text-lg sm:leading-[1.8]">
+          {article.body.map((paragraph, index) => (
+            <Fragment key={paragraph}>
+              <p>{paragraph}</p>
+              {index === 0 && article.pullQuote ? (
+                <PullQuote quote={article.pullQuote} variant={article.section} />
+              ) : null}
+            </Fragment>
           ))}
         </div>
       </article>
@@ -70,6 +79,14 @@ export function ArticlePage({
       <RelatedReading
         relatedReading={article.relatedReading}
         relatedProducts={article.relatedProducts}
+      />
+
+      <WorkCrossLinks
+        caption={
+          article.section === "case-studies"
+            ? "Case studies are one thread; writing and products are others"
+            : "Writing sits alongside case studies and products"
+        }
       />
     </main>
   );

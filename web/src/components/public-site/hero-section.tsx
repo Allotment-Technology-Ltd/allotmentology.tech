@@ -1,8 +1,10 @@
-import Link from "next/link";
+import { HeroComposition } from "@/components/public-site/hero-composition";
 
 type HeroSectionProps = {
   content: {
     eyebrow: string;
+    name: string;
+    location: string;
     headline: string;
     subheading: string;
     supporting: string;
@@ -13,33 +15,20 @@ type HeroSectionProps = {
 
 export function HeroSection({ content }: HeroSectionProps) {
   return (
-    <section className="space-y-6 border-b border-zinc-800/80 pb-12 sm:pb-14">
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
-        {content.eyebrow}
-      </p>
-      <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-zinc-50 sm:text-5xl">
-        {content.headline}
-      </h1>
-      <p className="max-w-3xl text-base leading-relaxed text-zinc-300 sm:text-lg">
-        {content.subheading}
-      </p>
-      <p className="max-w-3xl text-sm leading-relaxed text-zinc-400 sm:text-base">
-        {content.supporting}
-      </p>
-      <div className="flex flex-wrap gap-3 pt-2">
-        <Link
-          href={content.primaryCta.href}
-          className="rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
-        >
-          {content.primaryCta.label}
-        </Link>
-        <Link
-          href={content.secondaryCta.href}
-          className="rounded-md border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
-        >
-          {content.secondaryCta.label}
-        </Link>
-      </div>
+    <section className="relative overflow-hidden border-b border-zinc-800/80 pb-14 sm:pb-16">
+      <div
+        className="pointer-events-none absolute -left-1/4 top-0 h-[min(70vw,520px)] w-[min(90vw,520px)] rounded-full bg-sky-500/[0.07] blur-3xl"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -right-1/4 bottom-0 h-[min(60vw,420px)] w-[min(80vw,420px)] rounded-full bg-zinc-400/[0.04] blur-3xl"
+        aria-hidden
+      />
+      <div
+        className="noise-overlay pointer-events-none absolute inset-0 opacity-[0.35]"
+        aria-hidden
+      />
+      <HeroComposition content={content} />
     </section>
   );
 }

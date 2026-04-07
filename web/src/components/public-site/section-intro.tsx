@@ -2,11 +2,19 @@ type SectionIntroProps = {
   eyebrow?: string;
   heading: string;
   description?: string;
+  /** Visual accent for index pages: distinguishes writing vs case studies without new palette. */
+  accent?: "default" | "writing" | "cases";
 };
 
-export function SectionIntro({ eyebrow, heading, description }: SectionIntroProps) {
+const accentClass: Record<NonNullable<SectionIntroProps["accent"]>, string> = {
+  default: "",
+  writing: "border-l-2 border-sky-500/35 pl-5",
+  cases: "border-l-2 border-zinc-600 pl-5",
+};
+
+export function SectionIntro({ eyebrow, heading, description, accent = "default" }: SectionIntroProps) {
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3 ${accentClass[accent]}`}>
       {eyebrow ? (
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
           {eyebrow}

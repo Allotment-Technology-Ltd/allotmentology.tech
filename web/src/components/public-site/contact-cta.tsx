@@ -6,12 +6,22 @@ type ContactLink = {
 type ContactCTAProps = {
   body: string;
   links: [ContactLink, ContactLink, ContactLink];
+  /** When false, omit the section heading (e.g. contact page already has a page title). */
+  showHeading?: boolean;
+  heading?: string;
 };
 
-export function ContactCTA({ body, links }: ContactCTAProps) {
+export function ContactCTA({
+  body,
+  links,
+  showHeading = true,
+  heading = "Contact",
+}: ContactCTAProps) {
   return (
-    <section className="space-y-4 rounded-xl border border-zinc-700 bg-zinc-950/50 p-6 sm:p-7">
-      <h2 className="text-2xl font-semibold tracking-tight text-zinc-50">Contact</h2>
+    <section className="space-y-4 rounded-2xl border border-zinc-700/90 bg-gradient-to-br from-zinc-950/80 to-zinc-950/40 p-6 sm:p-7">
+      {showHeading ? (
+        <h2 className="text-2xl font-semibold tracking-tight text-zinc-50">{heading}</h2>
+      ) : null}
       <p className="max-w-4xl text-sm leading-relaxed text-zinc-400 sm:text-base">
         {body}
       </p>

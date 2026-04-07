@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AuthProvider } from "@/components/auth-provider";
+import { siteMetadataDefaults } from "@/lib/public-site/content";
 
 import "./globals.css";
 
@@ -16,9 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Allotment Technology — Product showcase and workspace",
-  description:
-    "Public showcase for Restormel Keys, SOPHIA, and PLOT, plus an approval-gated internal workspace.",
+  title: siteMetadataDefaults.title,
+  description: siteMetadataDefaults.description,
 };
 
 export default function RootLayout({

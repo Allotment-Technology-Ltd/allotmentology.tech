@@ -1,74 +1,95 @@
 export const siteIdentity = {
   name: "Adam Boon",
+  location: "Devon, United Kingdom",
   role: "Senior Product Leader",
   email: "admin@usesophia.app",
   githubUrl: "https://github.com/Allotment-Technology-Ltd/allotmentology.tech",
 } as const;
 
+/** Default title/description for pages that do not override metadata. */
+export const siteMetadataDefaults = {
+  title: "Adam Boon — Product leadership and independent building",
+  description:
+    "Adam Boon, based in Devon, United Kingdom: senior product leadership in NHS and public services, independent products (Restormel, SOPHIA, PLOT), and writing on AI, systems, and method.",
+} as const;
+
 export const heroContent = {
   eyebrow: "Allotment Works",
+  name: siteIdentity.name,
+  location: siteIdentity.location,
   headline:
-    "Senior product leadership for complex public services, with independent delivery to prove execution.",
+    "Senior product leadership in high-accountability public services, and independent building that keeps judgment honest.",
   subheading:
-    "I lead high-accountability product work in NHS and public-service contexts, and I build products independently across AI, systems, and consumer services.",
+    "I lead products where governance, safety, accessibility, and delivery pace have to hold together — mainly in NHS and wider public-service contexts. I also build and ship my own products across AI infrastructure, structured learning, and household software.",
   supporting:
-    "This site is a focused evidence set for employers, collaborators, and teams that need calm product judgment, clear prioritisation, and delivery discipline from discovery through live service.",
-  primaryCta: { label: "View case studies", href: "/case-studies" },
+    "Case studies and writing here are deliberate evidence: how I think under constraint, how I translate complexity into clear decisions, and how I sustain quality from discovery through live operation. Useful if you hire for senior product roles, want a serious collaborator, or care about disciplined AI and systems work.",
+  primaryCta: { label: "Read case studies", href: "/case-studies" },
   secondaryCta: { label: "Get in touch", href: "/contact" },
 } as const;
 
 export const productsIntro =
-  "These are not side projects for novelty. They are working products that show how I frame problems, shape strategy, and execute end-to-end under constraints.";
+  "Restormel, SOPHIA, and PLOT are practical expressions of the same habits I bring to public-service delivery: sharp problem framing, restraint under ambiguity, and end-to-end ownership. They are evidence of approach — not a portfolio of unrelated experiments.";
 
 export const products = [
   {
     id: "restormel-keys",
+    visualId: "restormel" as const,
     name: "Restormel Keys",
     href: "https://restormel.dev",
+    tagline: "A governable control plane between your product and model providers.",
     description:
       "A control layer for AI applications that handles routing, fallback policy, and BYOK governance above existing provider infrastructure.",
     employerSignal:
       "Shows systems-level product thinking: translating technical complexity into practical controls, integration paths, and operational confidence.",
+    /** Add `/site/products/restormel.png` when available — see public/site/products/README.md */
+    screenshotSrc: undefined as string | undefined,
   },
   {
     id: "sophia",
+    visualId: "sophia" as const,
     name: "SOPHIA",
     href: "https://usesophia.app",
+    tagline: "Structured philosophy learning with inquiry, writing, and careful model use.",
     description:
       "A structured philosophy learning product that combines guided inquiry, writing feedback, and AI-assisted reasoning.",
     employerSignal:
       "Shows product judgment in nuanced domains where trust, pedagogy, and interface clarity matter as much as feature capability.",
+    screenshotSrc: undefined as string | undefined,
   },
   {
     id: "plot",
+    visualId: "plot" as const,
     name: "PLOT",
     href: "https://plotbudget.com",
+    tagline: "Privacy-first household operations, starting from money rituals that stick.",
     description:
       "A privacy-first household operating system that starts with budgeting rituals and extends into shared household operations.",
     employerSignal:
       "Shows user-centred execution: designing around real behaviour, cognitive load, and sustained adoption instead of feature volume.",
+    screenshotSrc: undefined as string | undefined,
   },
 ] as const;
 
+export type ProductEntry = (typeof products)[number];
 export type ProductRef = (typeof products)[number]["id"];
 
 export const employerRelevance = {
-  heading: "Why this matters to employers",
+  heading: "Why this matters if you are hiring",
   intro:
-    "Taken together, public-service product leadership and independent product delivery provide evidence of both strategic depth and practical execution.",
+    "NHS and public-service work teaches consequence-shaped judgment. Building my own products teaches whether that judgment still holds when there is no institution to hide behind. Together they are a single profile: calm under constraint, explicit about trade-offs, and allergic to theatre.",
   points: [
-    "Leadership in high-stakes NHS/public-service environments where governance, safety, and delivery must align.",
-    "End-to-end product management across discovery, alpha, beta, and live service improvement.",
-    "Strong user-centred research and design practice tied to roadmap and prioritisation decisions.",
-    "Backlog ownership and MVP definition with clear trade-offs across risk, value, and delivery capacity.",
-    "Confident stakeholder management across clinical, operational, technical, and governance settings.",
+    "Comfort in regulated and high-stakes settings where safety, assurance, and live operations cannot be hand-waved away.",
+    "Discovery through live service: alpha, beta, and continuous improvement with real users and real governance.",
+    "Research and design wired into prioritisation — not decoration layered onto a fixed roadmap.",
+    "Backlog and MVP choices named honestly: what we are deferring, what risk we accept, and how we will know if we were wrong.",
+    "Stakeholder work across clinical, operational, engineering, and assurance audiences without collapsing into generic “alignment”.",
   ],
 } as const;
 
 export const experienceSummary = {
   heading: "Selected experience",
   body:
-    "My background combines senior product leadership in NHS and public-service organisations with independent product building. Across these contexts, I have led discovery and delivery in complex governance environments, including cyber products, clinically safe triage settings, cloud migration programmes, accessibility work, and live-service optimisation.",
+    "I am Adam Boon, based in Devon. My recent senior product work sits in NHS and national public-service contexts: cyber assurance tooling, clinically safe triage, live service improvement alongside cloud migration, accessibility, and the grind of keeping complex services coherent while priorities shift. Independently, I ship products that force the same standards — clear boundaries, interpretable behaviour, and maintenance I cannot outsource to a slide deck.",
 } as const;
 
 export type ArticleSeries = {
@@ -96,6 +117,8 @@ export type ArticleEntry = {
   relatedReading: string[];
   whatThisShows?: string;
   ctaLabel?: string;
+  /** Editorial pull quote inserted after the first body paragraph when set. */
+  pullQuote?: string;
 };
 
 export const caseStudies: ArticleEntry[] = [
@@ -140,6 +163,8 @@ export const caseStudies: ArticleEntry[] = [
     whatThisShows:
       "Shows cyber-product fluency and the ability to translate governance requirements into usable product decisions.",
     ctaLabel: "Read the DSPT case study",
+    pullQuote:
+      "For users, framework transitions are interpretation events — the product has to answer what changed, what stayed stable, and what can still be trusted.",
   },
   {
     slug: "rtanca",
@@ -181,6 +206,8 @@ export const caseStudies: ArticleEntry[] = [
     whatThisShows:
       "Shows delivery leadership across platform change, product quality, and stakeholder coordination.",
     ctaLabel: "Explore the RtaNCa work",
+    pullQuote:
+      "In live services, the separation between roadmap work, platform work, and operations rarely holds — the product question is what moves without lying about risk.",
   },
   {
     slug: "product-management-when-mistakes-actually-matter",
@@ -223,6 +250,8 @@ export const caseStudies: ArticleEntry[] = [
     whatThisShows:
       "Shows calm decision-making in high-consequence service environments.",
     ctaLabel: "View this case study",
+    pullQuote:
+      "When decisions sit near care pathways, evidence thresholds rise — and performative confidence becomes a liability.",
   },
 ] as const;
 
@@ -260,6 +289,8 @@ export const writingPosts: ArticleEntry[] = [
       "/writing/ai-coding-part-3-what-we-lose",
       "/case-studies/product-management-when-mistakes-actually-matter",
     ],
+    pullQuote:
+      "I stopped asking whether AI use made the work legit, and started asking whether I still owned the decisions.",
   },
   {
     slug: "ai-coding-part-2-development-costs",
@@ -295,6 +326,8 @@ export const writingPosts: ArticleEntry[] = [
       "/writing/ai-coding-part-3-what-we-lose",
       "/case-studies/rtanca",
     ],
+    pullQuote:
+      "When starting is cheap, starting too much becomes easy — you can generate plausible momentum without building durable shape.",
   },
   {
     slug: "ai-coding-part-3-what-we-lose",
@@ -330,6 +363,8 @@ export const writingPosts: ArticleEntry[] = [
       "/writing/ai-coding-part-2-development-costs",
       "/case-studies/product-management-when-mistakes-actually-matter",
     ],
+    pullQuote:
+      "Craft here is not nostalgia. It is operational responsibility: explicit assumptions, readable decisions, and maintainable systems.",
   },
 ];
 
@@ -368,30 +403,143 @@ export function getArticleByPath(path: string): ArticleEntry | null {
 
 export const featuredCaseStudySlugs = [
   "dspt-redesign",
+  "rtanca",
   "product-management-when-mistakes-actually-matter",
 ] as const;
 
 export const featuredWritingSlugs = [
   "ai-coding-part-1-why-i-stopped-feeling-guilty",
+  "ai-coding-part-2-development-costs",
   "ai-coding-part-3-what-we-lose",
 ] as const;
 
 export const aboutShort =
-  "I am a senior product leader working at the intersection of complex public-service delivery and independent product execution. I lead products where governance, safety, accessibility, and delivery discipline all matter at once. Building independently keeps my product judgment practical, evidence-led, and accountable.";
+  "I am Adam Boon, based in Devon. I lead senior product work where public institutions meet messy reality — NHS cyber services, clinically weighted triage, live migration, assurance — and I build my own products so my judgment stays grounded in shipping, not only in meetings. This site ties that work into one readable line of thought.";
 
-export const aboutLong =
-  "I lead digital products in environments where decisions carry operational and human consequences. Across NHS and public-service work, I have shaped products through discovery, alpha, beta, and live operation in settings where governance, risk, and delivery pace must be managed together.\n\nMy core practice is user-centred and delivery-focused: problem framing, service design, roadmap definition, backlog ownership, and prioritisation under real constraints. I work effectively across product, design, engineering, operational, and governance stakeholders, with an emphasis on clear decisions and measurable progress.\n\nAlongside this, I build products independently in AI, learning, and consumer systems. That independent work is not separate from my leadership profile; it is evidence of execution discipline and product judgment. It demonstrates how I turn strategy into shipped outcomes, manage trade-offs, and maintain quality from concept to live service.";
+export type AboutSection = { title: string; paragraphs: readonly string[] };
 
+export const aboutPageLead =
+  "I am Adam Boon. I live and work in Devon, United Kingdom. I am a senior product leader with a long arc in NHS and national public-service delivery, and an independent builder across AI systems, structured learning, and consumer software. The two sides reinforce each other: the institution teaches consequence; independent building tests whether I still mean what I say when the safety net is smaller.";
+
+export const aboutPageSections: readonly AboutSection[] = [
+  {
+    title: "Background",
+    paragraphs: [
+      "My product work has lived inside environments where “move fast” is not a moral slogan. I have led and shaped digital products through discovery, alpha, beta, and live operation while cyber frameworks shift, clinical safety matters, migration risk sits next to user pain, and governance is part of the product surface — not an afterthought.",
+      "That context rewards a particular temperament: patience with ambiguity, impatience with vagueness, and a habit of making assumptions visible before they become incidents. It also rewards fluency across disciplines — not claiming expertise everywhere, but knowing enough to ask better questions and to broker decisions that survive contact with reality.",
+    ],
+  },
+  {
+    title: "How I work",
+    paragraphs: [
+      "I am user-centred in the unglamorous sense: research and design tied to prioritisation, roadmaps that admit trade-offs, backlogs that reflect what we decided not to do, and live metrics that inform the next increment rather than decorate a report.",
+      "I care about narrative coherence inside teams — shared language between clinical, operational, engineering, and assurance partners — because most delivery failures are translation failures that hardened too early.",
+      "I am sceptical of product theatre: workshops that substitute for decisions, roadmaps that pretend certainty, and AI features that exist to signal modernity. I prefer small honest slices of value to large fictional ones.",
+    ],
+  },
+  {
+    title: "Why I build independently",
+    paragraphs: [
+      "Restormel, SOPHIA, and PLOT are not a separate hobby lane. They are where I stress-test execution: architecture boundaries, governance UX, pedagogy and trust, and household behaviour over time. If I cannot maintain a product thoughtfully, that is information — it tightens how I lead inside larger organisations too.",
+      "Writing on this site extends the same instinct: public, slow reasoning as a check on private certainty. Essays on AI and software economics sit next to case studies from NHS delivery because the through-line is judgment under constraint, not a tidy personal brand vertical.",
+    ],
+  },
+  {
+    title: "Problems I care about",
+    paragraphs: [
+      "Complex services that must stay safe, legible, and improvable while policy and technology move underneath them.",
+      "AI in operational products where interpretability, accountability, and proportionate governance matter more than demo polish.",
+      "Teams that need a senior product partner who can hold strategy and delivery in the same conversation — without collapsing either into slogans.",
+    ],
+  },
+] as const;
+
+export type NowSection = { title: string; paragraphs: readonly string[] };
+
+export const nowPageIntro =
+  "A short, current snapshot. I am Adam Boon, based in Devon — the details below are what I would tell you in a first conversation.";
+
+export const nowPageSections: readonly NowSection[] = [
+  {
+    title: "Focus right now",
+    paragraphs: [
+      "Deepening the independent products as serious artefacts: Restormel (governance and routing for AI applications), SOPHIA (structured philosophy learning with disciplined use of models), and PLOT (privacy-first household operations starting from money rituals).",
+      "Writing that stays slow and exacting — method in public, not content cadence for its own sake.",
+      "Staying close to NHS and public-service shaped problems even when the immediate work is broader: assurance, safety, accessibility, and the ethics of shipping under institutional responsibility.",
+    ],
+  },
+  {
+    title: "Build themes",
+    paragraphs: [
+      "Interpretable control planes over opaque model behaviour.",
+      "Products where trust is structural — pedagogy, consent, and clarity — not a marketing wrapper.",
+      "Household-scale software that respects cognitive load and longevity over feature checklists.",
+    ],
+  },
+  {
+    title: "Roles and opportunities",
+    paragraphs: [
+      "I am open to senior product leadership (Head of Product, Director-level IC+leadership hybrids, or equivalent) where the work is genuinely complex: regulated or high-accountability services, multi-year roadmaps, live operations, and grown-up stakeholder landscapes.",
+      "I am also open to selective collaborations — advisory or hands-on — where product judgment and delivery depth both matter, and where timelines respect the problem.",
+    ],
+  },
+  {
+    title: "The right fit",
+    paragraphs: [
+      "You value calm, evidence-led decisions and can tolerate plain language about risk.",
+      "You want someone who has led in settings where mistakes are costly, and who still ships.",
+      "You are not looking for a cheerleader for the latest toolkit; you want disciplined use of AI and platforms in real services.",
+      "Remote-first or hybrid with sensible travel works; I am based in Devon and have long worked effectively with distributed national teams.",
+    ],
+  },
+] as const;
+
+/** Short paragraph for homepage “Now” preview card. */
 export const nowContent =
-  "I am focused on senior product roles where complexity is real: regulated services, high-accountability delivery, and thoughtful use of AI in operational products. I am open to the right role where strategic leadership and hands-on product judgment are both valued.";
+  "Building out Restormel, SOPHIA, and PLOT with the same rigour I expect in public-service delivery; writing slowly on AI, cost, and craft; open to senior product roles and serious collaborations where complexity and accountability are real. Details on the Now page.";
+
+export const contactPage = {
+  heading: "Get in touch",
+  intro:
+    "I am Adam Boon, based in Devon, United Kingdom. If you are hiring for senior product leadership in a complex service environment, or exploring collaboration where strategy and execution are equally load-bearing, a direct conversation is the best next step.",
+  conversationNote:
+    "Useful emails tend to name the context (organisation, service area, seniority), what you are trying to decide in the next three to six months, and whether the role is delivery-heavy, discovery-heavy, or genuinely both.",
+  ctaBridge: "Email for a considered first exchange; GitHub for code and artefacts; request a CV by email if you need the formal record.",
+  closing:
+    "I read everything that reflects that level of care. If there is a mutual fit, I will reply with the same.",
+} as const;
 
 export const contactContent = {
   body:
-    "If you are hiring for a senior product role, or exploring a collaboration where product strategy and delivery depth are both required, I would be glad to talk.",
+    "Adam Boon · Devon, United Kingdom. Hiring for a senior product role, or exploring collaboration where judgment and shipping both matter? Email is best for a substantive first exchange.",
   email: { label: "Email", href: `mailto:${siteIdentity.email}` },
   github: { label: "GitHub", href: siteIdentity.githubUrl },
   cv: {
-    label: "CV",
+    label: "Request CV",
     href: `mailto:${siteIdentity.email}?subject=CV%20request`,
   },
+} as const;
+
+/** Internal nav labels for article footers and cross-links. */
+export const workCrossLinks = [
+  { href: "/", label: "Home" },
+  { href: "/about", label: "About" },
+  { href: "/now", label: "Now" },
+  { href: "/case-studies", label: "Case studies" },
+  { href: "/writing", label: "Writing" },
+  { href: "/contact", label: "Contact" },
+] as const;
+
+export const writingIndexIntro = {
+  eyebrow: "Essays",
+  heading: "Writing",
+  description:
+    "Long-form pieces on AI-assisted software work, economics of delivery, craft, and product method. These are essays, not posts: written to clarify my own thinking and to leave a public trail of how conclusions were reached.",
+} as const;
+
+export const caseStudiesIndexIntro = {
+  eyebrow: "Delivery",
+  heading: "Case studies",
+  description:
+    "Reflective essays grounded in NHS and national public-service product work — cyber redesign, live migration, clinically weighted triage. Each piece is a delivery story with the politics and governance left in: what was at stake, what was traded off, and what stayed honest.",
 } as const;
