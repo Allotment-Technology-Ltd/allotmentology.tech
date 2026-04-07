@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { MotionConfig, motion } from "framer-motion";
 import Link from "next/link";
 
 type SeriesNavigationProps = {
@@ -19,13 +19,13 @@ export function SeriesNavigation({
   nextHref,
 }: SeriesNavigationProps) {
   return (
+    <MotionConfig reducedMotion="user">
     <motion.div
       className="rounded-2xl border border-sky-500/20 bg-sky-950/15 p-6"
       initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      reducedMotion="user"
     >
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-400/90">
@@ -62,5 +62,6 @@ export function SeriesNavigation({
         ) : null}
       </div>
     </motion.div>
+    </MotionConfig>
   );
 }
